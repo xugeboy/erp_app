@@ -40,6 +40,9 @@ dependencies:
   logger: ^2.5.0
   get: ^4.7.2
   json_annotation: ^4.9.0
+  flutter_riverpod: ^2.6.1
+  equatable: ^2.0.7
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:
