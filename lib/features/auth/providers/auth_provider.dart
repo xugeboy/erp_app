@@ -70,5 +70,5 @@ final dioProvider = Provider<Dio>((ref) {
 // Provider for AuthStateNotifier
 final authStateProvider = StateNotifierProvider<AuthStateNotifier, AuthStatus>((ref) {
   final tokenStorage = ref.watch(tokenStorageProvider); // 使用 watch 确保服务可用
-  return AuthStateNotifier(tokenStorage);
+  return AuthStateNotifier(tokenStorage,ref);
 });

@@ -99,7 +99,7 @@ class AppDrawer extends ConsumerWidget {
                   // 添加 生产单
                   _buildDrawerItem(
                     icon: Icons.production_quantity_limits, // 示例图标
-                    text: '生产单', // Sales Orders
+                    text: '生产单', // Production
                     isSelected: selectedPage == 'Sales Orders',
                     onTap: () {
                       ref.read(selectedPageProvider.notifier).state = 'Production Orders';

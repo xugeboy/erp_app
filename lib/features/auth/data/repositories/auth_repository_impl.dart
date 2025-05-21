@@ -57,16 +57,17 @@ class AuthRepositoryImpl implements AuthRepository {
         if (profileCode == 0 && profileApiResponse['data'] != null) {
           logger.i("Repository: User profile fetched successfully.");
           final Map<String, dynamic> profileData = profileApiResponse['data'] as Map<String, dynamic>;
-          final Map<String, dynamic>? userData = profileData['user'] as Map<String, dynamic>?;
+          // final Map<String, dynamic>? userData = profileData['user'] as Map<String, dynamic>?;
           final List<dynamic>? rolesData = profileData['roles'] as List<dynamic>?;
+          final Map<String, dynamic>? deptData = profileData['dept'] as Map<String, dynamic>?;
 
-          if (userData != null) {
+          if (profileData != null) {
             // --- Step 4: 构建完整的 User 实体 ---
             final user = User(
-              id: (userData['id'] as int? ?? loginData.userId).toString(), // 优先用 profile 的 id， fallback 到 login 的
+              id: (profileData['id'] as int? ?? loginData.userId).toString(), // 优先用 profile 的 id， fallback 到 login 的
               username: username, // 使用登录用户名
-              nickname: userData['nickname'] as String,
-              deptId: userData['deptId'] as int?,
+              nickname: profileData['nickname'] as String,
+              deptId: deptData?['id'] as int,
               // 将 List<dynamic> 转换为 List<String>
               roles: rolesData?.map((role) => role.toString()).toList() ?? [],
             );

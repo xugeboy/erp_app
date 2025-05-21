@@ -1,4 +1,4 @@
-// lib/features/auth/data/models/login_request.dart
+// lib/features/auth/data/models/sales_order_model.dart
 import 'package:equatable/equatable.dart'; // 可选，如果需要比较对象
 
 class LoginRequest extends Equatable {
