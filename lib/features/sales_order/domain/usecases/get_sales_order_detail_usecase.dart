@@ -8,7 +8,7 @@ class GetSalesOrderDetailUseCase {
 
   GetSalesOrderDetailUseCase(this.repository);
 
-  Future<SalesOrderEntity> call(String orderId) async {
+  Future<SalesOrderEntity> call(int orderId) async {
     return repository.getSalesOrderDetail(orderId);
   }
 }

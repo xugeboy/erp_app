@@ -8,63 +8,111 @@ class SalesOrderRemoteDataSourceImpl implements SalesOrderRemoteDataSource {
   final Dio dio;
 
   final String _getSalesOrdersUrl =
-      'https://erp.xiangletools.store:30443/admin-api/sales-orders'; // Example
+      'https://erp.xiangletools.store:30443/admin-api/erp/sale-order/page';
   final String _getSalesOrderDetailBaseUrl =
-      'https://erp.xiangletools.store:30443/admin-api/sales-orders'; // Example, ID will be appended
+      'https://erp.xiangletools.store:30443/admin-api/erp/sale-order/get';
   final String _updateSalesOrderStatusBaseUrl =
-      'https://erp.xiangletools.store:30443/admin-api/sales-orders'; // Example, ID and possibly /status will be appended
+      'https://erp.xiangletools.store:30443/admin-api/erp/sale-order/update-status';
 
-  SalesOrderRemoteDataSourceImpl({required this.dio});
+  SalesOrderRemoteDataSourceImpl(this.dio);
 
   @override
   Future<List<SalesOrderModel>> getSalesOrders({
     String? orderNumberQuery,
-    String? statusFilter,
+    int? statusFilter, // Changed to int? to match the interface
+    required int pageNo,
+    required int pageSize,
   }) async {
-    Map<String, dynamic> queryParams = {};
+    // Prepare query parameters
+    Map<String, dynamic> queryParams = {
+      'pageNo': pageNo,
+      'pageSize': pageSize,
+    };
+
     if (orderNumberQuery != null && orderNumberQuery.isNotEmpty) {
       queryParams['orderNumber'] = orderNumberQuery;
     }
-    if (statusFilter != null &&
-        statusFilter.isNotEmpty &&
-        statusFilter.toLowerCase() != 'all') {
+
+    // Add statusFilter if it's provided (it's an int?, convert to String for query)
+    if (statusFilter != null) {
       queryParams['status'] = statusFilter;
     }
 
     logger.d(
-        'Attempting to get sales orders from $_getSalesOrdersUrl with params: $queryParams');
+        'DataSource: Attempting to get sales orders from $_getSalesOrdersUrl with params: $queryParams');
 
     try {
       final response = await dio.get(
         _getSalesOrdersUrl,
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+        queryParameters: queryParams,
+        // Add Options here if needed for specific headers for this request,
+        // e.g., if your AuthInterceptor doesn't cover it or special headers are needed.
+        // options: Options(headers: {'Custom-Sales-Header': 'value'}),
       );
 
+      // Check the structure of the response data
+      // Your API might return a list directly, or a map containing the list and total count.
       if (response.data is List) {
+        // Case 1: API returns a list directly
         final List<dynamic> responseData = response.data as List<dynamic>;
-        logger.d('Sales orders data received, count: ${responseData.length}');
+        logger.d(
+            'DataSource: Sales orders data (direct list) received for page $pageNo, count: ${responseData.length}');
         return responseData
             .map((data) =>
             SalesOrderModel.fromJson(data as Map<String, dynamic>))
             .toList();
+      } else if (response.data is Map<String, dynamic>) {
+        // Case 2: API returns a map, e.g., {"data": {"list": [...], "total": ...}} or {"list": [...]}
+        final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
+        List<dynamic>? listData;
+
+        // Try to find the list in common structures
+        if (responseMap.containsKey('list') && responseMap['list'] is List) {
+          listData = responseMap['list'] as List<dynamic>;
+        } else if (responseMap.containsKey('data') && responseMap['data'] is Map) {
+          final dataMap = responseMap['data'] as Map<String, dynamic>;
+          if (dataMap.containsKey('list') && dataMap['list'] is List) {
+            listData = dataMap['list'] as List<dynamic>;
+          }
+          // You could also extract total count here if needed by your notifier:
+          int? totalCount = dataMap['total'] as int?;
+        }
+        // Add more checks if your API has a different structure for the list
+
+        if (listData != null) {
+          logger.d(
+              'DataSource: Sales orders data (from wrapped list) received for page $pageNo, count: ${listData.length}');
+          return listData
+              .map((data) =>
+              SalesOrderModel.fromJson(data as Map<String, dynamic>))
+              .toList();
+        } else {
+          logger.w(
+              'DataSource: Response is a Map, but "list" key not found or not a List. Data: ${response.data}');
+          throw Exception(
+              'Invalid response format: Expected a list of orders or a map containing a list.');
+        }
       } else {
+        // Fallback for unexpected response types
         logger.w(
-            'Invalid response format for sales orders. Expected List, got ${response.data?.runtimeType}');
+            'DataSource: Invalid response format for sales orders. Expected List or Map, got ${response.data?.runtimeType}. Data: ${response.data}');
         throw Exception(
             'Invalid response format received from server for sales orders.');
       }
     } on DioException catch (e) {
+      // Consistent with your AuthRemoteDataSourceImpl: log and rethrow
       logger.d(
-          "DioException in getSalesOrders: ${e.response?.statusCode} - ${e.response?.data ?? e.message}");
+          "DataSource: DioException in getSalesOrders (page $pageNo): ${e.response?.statusCode} - ${e.response?.data ?? e.message}");
       rethrow; // Rethrow for the repository to handle
-    } catch (e) {
-      logger.e("Unexpected error in getSalesOrders: $e", stackTrace: (e is Error ? e.stackTrace : null));
-      throw Exception('Data source error in getSalesOrders: $e');
+    } catch (e, s) {
+      // Catch any other unexpected errors
+      logger.e("DataSource: Unexpected error in getSalesOrders (page $pageNo)", error: e, stackTrace: s);
+      throw Exception('Data source error in getSalesOrders: ${e.toString()}');
     }
   }
 
   @override
-  Future<SalesOrderModel> getSalesOrderDetail(String orderId) async {
+  Future<SalesOrderModel> getSalesOrderDetail(int orderId) async {
     final String url = '$_getSalesOrderDetailBaseUrl/$orderId';
     logger.d('Attempting to get sales order detail from $url');
 
@@ -93,18 +141,16 @@ class SalesOrderRemoteDataSourceImpl implements SalesOrderRemoteDataSource {
 
   @override
   Future<void> updateSalesOrderStatus(
-      String orderId, String newStatus, String? remarks) async {
-    // Adjust the URL path as per your API design (e.g., /status, /approve, etc.)
-    final String url = '$_updateSalesOrderStatusBaseUrl/$orderId/status';
+      int orderId, int newStatus) async {
     logger.d(
-        'Attempting to update sales order status for $orderId to $newStatus at $url');
+        'Attempting to update sales order status for $orderId to $newStatus at $_updateSalesOrderStatusBaseUrl');
 
     try {
       final response = await dio.put( // Or dio.patch, depending on your API
-        url,
+        _updateSalesOrderStatusBaseUrl,
         data: {
+          'id': newStatus,
           'status': newStatus,
-          if (remarks != null) 'remarks': remarks, // Include remarks only if provided
         },
         options: Options(
           headers: {'Content-Type': 'application/json'},

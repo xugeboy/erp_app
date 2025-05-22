@@ -1,10 +1,11 @@
 // lib/features/sales_order/data/models/sales_order_model.dart
+import '../../../../core/utils/logger.dart';
 import '../../domain/entities/sales_order_entity.dart';
 
 class SalesOrderModel extends SalesOrderEntity {
   const SalesOrderModel({
-    super.id,
-    super.no,
+    required super.id,
+    required super.no,
     required super.status,
     super.orderType,
     super.shippingFee,
@@ -21,47 +22,49 @@ class SalesOrderModel extends SalesOrderEntity {
   });
 
   factory SalesOrderModel.fromJson(Map<String, dynamic> json) {
-    // Helper function to safely parse numbers to double, returning 0.0 if null or not a number
-    double parseDouble(dynamic value) {
-      if (value is num) {
-        return value.toDouble();
-      } else if (value is String) {
-        return double.tryParse(value) ?? 0.0;
-      }
-      return 0.0; // Default or throw error
+    // Safe parsing to double, return null if not parsable
+    double? parseDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
     }
 
-    // Helper function to safely parse numbers to int, returning 0 if null or not a number
-    int parseInt(dynamic value) {
-      if (value is num) {
-        return value.toInt();
-      } else if (value is String) {
-        return int.tryParse(value) ?? 0;
-      }
-      return 0; // Default or throw error
+    // Safe parsing to int, return null if not parsable
+    int? parseInt(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value);
+      return null;
     }
 
-    // Helper function to safely parse string to DateTime
-    DateTime parseDateTime(dynamic value) {
-      if (value is String) {
-        try {
-          return DateTime.parse(value);
-        } catch (e) {
-          throw FormatException('Invalid DateTime format: $value');
+    // Safe parsing to DateTime, return null if not parsable
+    DateTime? parseDateTime(dynamic value) {
+      if (value == null) return null;
+      try {
+        if (value is int) {
+          return DateTime.fromMillisecondsSinceEpoch(value);
+        } else if (value is String) {
+          final intValue = int.tryParse(value);
+          if (intValue != null) {
+            return DateTime.fromMillisecondsSinceEpoch(intValue);
+          }
         }
+      } catch (e) {
+        logger.e("DateTime parse error", error: e);
       }
-      throw FormatException('Expected String for DateTime, got ${value.runtimeType}');
+      return null;
     }
 
     return SalesOrderModel(
-      id: parseInt(json['id']),
-      no: json['no'] as String? ?? '', // Provide default if it can be null but entity requires non-null
-      status: parseInt(json['status']),
-      orderType: parseInt(json['orderType'] ?? json['order_type']), // Example: trying both camelCase and snake_case
+      id: parseInt(json['id'])?? 0,
+      no: json['no'] as String? ?? '',
+      status: parseInt(json['status'])?? 0,
+      orderType: parseInt(json['orderType'] ?? json['order_type']),
       shippingFee: parseDouble(json['shippingFee'] ?? json['shipping_fee']),
       customerName: json['customerName'] ?? json['customer_name'] as String?,
-      orderTime: parseDateTime(json['orderTime'] ?? json['order_time']),
-      leadTime: parseDateTime(json['leadTime'] ?? json['lead_time']),
+      orderTime: parseDateTime(json['orderTime'] ?? json['order_time'])?? DateTime(2024),
+      leadTime: parseDateTime(json['leadTime'] ?? json['lead_time'])?? DateTime(2024),
       totalPrice: parseDouble(json['totalPrice'] ?? json['total_price']),
       depositPrice: parseDouble(json['depositPrice'] ?? json['deposit_price']),
       remark: json['remark'] as String?,
@@ -81,8 +84,8 @@ class SalesOrderModel extends SalesOrderEntity {
       'orderType': orderType, // Or 'order_type' if backend expects snake_case
       'shippingFee': shippingFee,
       'customerName': customerName,
-      'orderTime': orderTime.toIso8601String(), // Common format for sending DateTime
-      'leadTime': leadTime.toIso8601String(),
+      'orderTime': orderTime, // Common format for sending DateTime
+      'leadTime': leadTime,
       'totalPrice': totalPrice,
       'depositPrice': depositPrice,
       'remark': remark,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../sales_order/presentation/pages/sales_order_list_page.dart';
+
 // StateProvider 来管理当前选中的页面名称 (或者你可以用索引、枚举等)
 // 添加新的页面键名
 final selectedPageProvider = StateProvider<String>((ref) => 'Dashboard'); // 默认选中 Dashboard
@@ -92,7 +94,10 @@ class AppDrawer extends ConsumerWidget {
                     onTap: () {
                       ref.read(selectedPageProvider.notifier).state = 'Sales Orders';
                       Navigator.pop(context);
-                      // TODO: 执行导航到销售订单页面的逻辑
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SalesOrderListPage()),
+                      );
                     },
                     theme: drawerTheme,
                   ),

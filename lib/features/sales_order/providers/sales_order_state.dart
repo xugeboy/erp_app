@@ -2,7 +2,7 @@
 import 'package:equatable/equatable.dart';
 import '../domain/entities/sales_order_entity.dart';
 
-enum ScreenState { initial, loading, loaded, error, submitting, success }
+enum ScreenState { initial, loading, loaded, error, submitting, success, loadingMore } // Added loadingMore
 
 class SalesOrderState extends Equatable {
   // List Page State
@@ -10,7 +10,13 @@ class SalesOrderState extends Equatable {
   final List<SalesOrderEntity> orders;
   final String listErrorMessage;
   final String currentOrderNumberQuery;
-  final int? currentStatusFilterCode; // The integer code for filtering
+  final int? currentStatusFilterCode;
+
+  // Pagination State
+  final int currentPageNo;
+  final int pageSize;
+  final bool canLoadMore;
+  final int? totalOrdersCount; // Optional: if your API returns total count
 
   // Detail Page State
   final ScreenState detailState;
@@ -19,7 +25,7 @@ class SalesOrderState extends Equatable {
 
   // Approval Page State
   final ScreenState approvalState;
-  final String approvalMessage; // Can be error or success message
+  final String approvalMessage;
 
   const SalesOrderState({
     this.listState = ScreenState.initial,
@@ -27,6 +33,10 @@ class SalesOrderState extends Equatable {
     this.listErrorMessage = '',
     this.currentOrderNumberQuery = '',
     this.currentStatusFilterCode,
+    this.currentPageNo = 1, // Default to page 1
+    this.pageSize = 10,     // Default page size
+    this.canLoadMore = true,  // Assume can load more initially
+    this.totalOrdersCount,
     this.detailState = ScreenState.initial,
     this.selectedOrder,
     this.detailErrorMessage = '',
@@ -34,7 +44,6 @@ class SalesOrderState extends Equatable {
     this.approvalMessage = '',
   });
 
-  // Initial state
   factory SalesOrderState.initial() {
     return const SalesOrderState();
   }
@@ -45,10 +54,15 @@ class SalesOrderState extends Equatable {
     String? listErrorMessage,
     String? currentOrderNumberQuery,
     int? currentStatusFilterCode,
-    bool clearStatusFilter = false, // Flag to explicitly clear the filter
+    bool clearStatusFilter = false,
+    int? currentPageNo,
+    int? pageSize, // Though typically pageSize is constant
+    bool? canLoadMore,
+    int? totalOrdersCount,
+    bool clearTotalOrdersCount = false,
     ScreenState? detailState,
     SalesOrderEntity? selectedOrder,
-    bool clearSelectedOrder = false, // Flag to explicitly clear selectedOrder
+    bool clearSelectedOrder = false,
     String? detailErrorMessage,
     ScreenState? approvalState,
     String? approvalMessage,
@@ -57,10 +71,18 @@ class SalesOrderState extends Equatable {
       listState: listState ?? this.listState,
       orders: orders ?? this.orders,
       listErrorMessage: listErrorMessage ?? this.listErrorMessage,
-      currentOrderNumberQuery: currentOrderNumberQuery ?? this.currentOrderNumberQuery,
-      currentStatusFilterCode: clearStatusFilter ? null : currentStatusFilterCode ?? this.currentStatusFilterCode,
+      currentOrderNumberQuery:
+      currentOrderNumberQuery ?? this.currentOrderNumberQuery,
+      currentStatusFilterCode: clearStatusFilter
+          ? null
+          : currentStatusFilterCode ?? this.currentStatusFilterCode,
+      currentPageNo: currentPageNo ?? this.currentPageNo,
+      pageSize: pageSize ?? this.pageSize,
+      canLoadMore: canLoadMore ?? this.canLoadMore,
+      totalOrdersCount: clearTotalOrdersCount ? null : totalOrdersCount ?? this.totalOrdersCount,
       detailState: detailState ?? this.detailState,
-      selectedOrder: clearSelectedOrder ? null : selectedOrder ?? this.selectedOrder,
+      selectedOrder:
+      clearSelectedOrder ? null : selectedOrder ?? this.selectedOrder,
       detailErrorMessage: detailErrorMessage ?? this.detailErrorMessage,
       approvalState: approvalState ?? this.approvalState,
       approvalMessage: approvalMessage ?? this.approvalMessage,
@@ -74,6 +96,10 @@ class SalesOrderState extends Equatable {
     listErrorMessage,
     currentOrderNumberQuery,
     currentStatusFilterCode,
+    currentPageNo,
+    pageSize,
+    canLoadMore,
+    totalOrdersCount,
     detailState,
     selectedOrder,
     detailErrorMessage,

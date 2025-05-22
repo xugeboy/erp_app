@@ -15,12 +15,16 @@ class SalesOrderRepositoryImpl implements SalesOrderRepository {
   @override
   Future<List<SalesOrderEntity>> getSalesOrders({
     String? orderNumberQuery,
-    String? statusFilter,
+    int? statusFilter,
+    required int pageNo,
+    required int pageSize,
   }) async {
     try {
       logger.d('Repository: Calling remoteDataSource.getSalesOrders');
       final remoteOrders = await remoteDataSource.getSalesOrders(
-          orderNumberQuery: orderNumberQuery, statusFilter: statusFilter);
+          orderNumberQuery: orderNumberQuery, statusFilter: statusFilter,
+          pageNo: pageNo,
+          pageSize: pageSize);
       logger.d(
           'Repository: Received ${remoteOrders.length} orders from remoteDataSource');
       return remoteOrders;
@@ -34,7 +38,7 @@ class SalesOrderRepositoryImpl implements SalesOrderRepository {
   }
 
   @override
-  Future<SalesOrderEntity> getSalesOrderDetail(String orderId) async {
+  Future<SalesOrderEntity> getSalesOrderDetail(int orderId) async {
     try {
       logger.d(
           'Repository: Calling remoteDataSource.getSalesOrderDetail for ID $orderId');
@@ -54,12 +58,12 @@ class SalesOrderRepositoryImpl implements SalesOrderRepository {
 
   @override
   Future<void> updateSalesOrderStatus(
-      String orderId, String newStatus, String? remarks) async {
+      int orderId, int newStatus) async {
     try {
       logger.d(
           'Repository: Calling remoteDataSource.updateSalesOrderStatus for ID $orderId to $newStatus');
       await remoteDataSource.updateSalesOrderStatus(
-          orderId, newStatus, remarks);
+          orderId, newStatus);
       logger.d(
           'Repository: Successfully called updateSalesOrderStatus for ID $orderId');
     } on DioException catch (e, s) {

@@ -11,12 +11,16 @@ class GetSalesOrdersUseCase {
 
   Future<List<SalesOrderEntity>> call({
     String? orderNumberQuery,
-    String? statusFilter,
+    int? statusFilter,
+    required int pageNo,
+    required int pageSize,
   }) async {
     // In a more complex scenario, you might add more business logic here
     return repository.getSalesOrders(
       orderNumberQuery: orderNumberQuery,
       statusFilter: statusFilter,
+      pageNo: pageNo,
+      pageSize: pageSize,
     );
   }
 }

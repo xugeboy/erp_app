@@ -6,6 +6,7 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../auth/providers/auth_provider.dart';
 import '../../domain/entities/sales_order_entity.dart';
 import '../../../../core/utils/logger.dart';
 import '../../providers/sales_order_providers.dart';
@@ -14,7 +15,7 @@ import '../../providers/sales_order_state.dart';
 enum ApprovalAction { approve, reject }
 
 class SalesOrderApprovalPage extends ConsumerStatefulWidget {
-  final String orderId;
+  final int orderId;
 
   const SalesOrderApprovalPage({
     super.key,
@@ -54,100 +55,111 @@ class _SalesOrderApprovalPageState
     if (currentState.selectedOrder == null ||
         currentState.selectedOrder!.id.toString() != widget.orderId ||
         currentState.detailState != ScreenState.loaded) {
-      logger.d("ApprovalPage: Order details not available/mismatch. Fetching for ${widget.orderId}");
+      logger.d(
+          "ApprovalPage: Order details not available/mismatch. Fetching for ${widget.orderId}");
       await notifier.fetchOrderDetail(widget.orderId);
       // PDF load will be triggered by the ref.listen on selectedOrder
     } else {
+      // Order details are already in state, attempt to load PDF
       final order = currentState.selectedOrder!;
-      if (order.contractFile.isNotEmpty) { // Assuming contractFile holds an identifier for the meta-API
-        _fetchPdfUrlAndDownload(order);
-      } else {
-        if (mounted) {
-          setState(() { _pdfLoadingError = "此订单没有合同文件标识。"; });
-        }
-      }
+      // Now we don't check order.contractFile, we just try to get the URL from API
+      _fetchContractUrlAndDisplayPdf(order);
     }
   }
 
-  Future<void> _fetchPdfUrlAndDownload(SalesOrderEntity order) async {
-    final String pdfMetaApiUrl =
+  Future<void> _fetchContractUrlAndDisplayPdf(SalesOrderEntity order) async {
+    // **STEP 1: Call your API to get the actual PDF URL**
+    // IMPORTANT: Construct the correct URL for your PDF metadata API.
+    // This will use order.id.
+    final String pdfMetadataApiUrl =
         'https://erp.xiangletools.store:30443/admin-api/exportPdfApp?id=${order.id}';
+    //                                                                ^^^ Ensure this parameter name is correct ('id', 'orderId', etc.)
 
-    logger.d("ApprovalPage: Fetching PDF metadata from API: $pdfMetaApiUrl for order ${order.no}");
+    logger.d("ApprovalPage: Fetching PDF URL from metadata API: $pdfMetadataApiUrl for order ${order.no}");
 
     if (mounted) {
       setState(() {
         _isPdfLoading = true;
         _pdfLoadingError = '';
-        _localPdfPath = null;
+        _localPdfPath = null; // Clear previous path
       });
     }
 
     try {
-      final dio = ref.read(dioProvider);
+      final dio = ref.read(dioProvider); // Get Dio instance from Riverpod provider
       final metaResponse = await dio.get(
-        pdfMetaApiUrl,
-        // Add headers if this meta-API call is protected
-        // options: Options(headers: {'Authorization': 'Bearer YOUR_TOKEN'}),
+        pdfMetadataApiUrl,
+        // Add headers if this meta-API call is protected (e.g., Authorization)
+        // options: Options(headers: {'Authorization': 'Bearer YOUR_TOKEN_HERE'}),
       );
 
       String? directPdfUrl;
       if (metaResponse.statusCode == 200 && metaResponse.data != null) {
-        // **IMPORTANT: Adjust this parsing based on your meta-API's response structure**
+        logger.d("PDF Metadata API Response Data: ${metaResponse.data}");
+        // **CRITICAL: Adjust this parsing based on your API's response structure for the PDF URL**
         if (metaResponse.data is Map<String, dynamic>) {
-          // Example 1: { "data": { "pdfUrl": "..." } }
-          directPdfUrl = metaResponse.data?['data']?['pdfUrl'] as String?;
-          if (directPdfUrl == null) {
-            // Example 2: { "url": "..." }
-            directPdfUrl = metaResponse.data?['url'] as String?;
+          final responseData = metaResponse.data as Map<String, dynamic>;
+          // Try common patterns, adjust to your actual response
+          if (responseData.containsKey('data') && responseData['data'] is Map) {
+            directPdfUrl = responseData['data']?['url'] as String? ?? responseData['data']?['pdfUrl'] as String?;
           }
-          // Add more parsing logic if your structure is different
+          if (directPdfUrl == null && responseData.containsKey('url')) {
+            directPdfUrl = responseData['url'] as String?;
+          }
+          if (directPdfUrl == null && responseData.containsKey('pdfUrl')) {
+            directPdfUrl = responseData['pdfUrl'] as String?;
+          }
+
         } else if (metaResponse.data is String) {
-          // If the API returns the URL as plain text
+          // If the API returns the URL as plain text directly
           directPdfUrl = metaResponse.data as String;
         }
 
-        if (directPdfUrl == null || directPdfUrl.isEmpty || (!Uri.tryParse(directPdfUrl)?.hasAbsolutePath ?? true) ) {
-          throw Exception("从API获取的PDF链接无效或为空: $directPdfUrl");
+        if (directPdfUrl == null || directPdfUrl.isEmpty || (!Uri.tryParse(directPdfUrl)!.hasAbsolutePath ?? true)) {
+          logger.e("Failed to parse a valid PDF URL from metadata API response. Received URL: $directPdfUrl. Full response: ${metaResponse.data}");
+          throw Exception("从API获取的PDF链接无效或为空。");
         }
         logger.d("ApprovalPage: Received direct PDF URL: $directPdfUrl");
 
       } else {
+        logger.e("PDF Metadata API request failed with status ${metaResponse.statusCode}, data: ${metaResponse.data}");
         throw DioException(
             requestOptions: metaResponse.requestOptions,
             response: metaResponse,
             error: "获取PDF链接API返回状态 ${metaResponse.statusCode}",
-            message: "无法从API获取PDF链接。"
-        );
+            message: "无法从API获取PDF链接。");
       }
 
-      // **STEP 2: Download the PDF from the direct URL**
+      // **STEP 2: Download the PDF from the direct URL obtained**
       logger.d("ApprovalPage: Downloading PDF from direct URL: $directPdfUrl");
       final dir = await getTemporaryDirectory();
-      final fileName = directPdfUrl.split('/').last.split('?').first;
+      final fileName = directPdfUrl.split('/').last.split('?').first; // Basic filename extraction
       final safeFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9.\-_]'), '_') + (fileName.toLowerCase().endsWith('.pdf') ? '' : '.pdf');
       final localPath = '${dir.path}/$safeFileName';
 
-      await dio.download(directPdfUrl, localPath); // dio.download handles byte stream internally
+      // Use a new Dio instance or your global one for the actual download
+      await dio.download(directPdfUrl, localPath
+        // Add headers for the actual PDF download if this new URL also requires them
+        // options: Options(headers: {'Authorization': 'Bearer YOUR_POSSIBLY_DIFFERENT_TOKEN_OR_NONE'}),
+      );
 
       if (mounted) {
         setState(() {
           _localPdfPath = localPath;
           _isPdfLoading = false;
-          logger.d("PDF downloaded successfully: $localPath");
+          logger.d("PDF downloaded successfully from direct URL to: $localPath");
         });
       }
-
     } on DioException catch (e, s) {
-      logger.e("Error during PDF fetch/download process for $pdfMetaApiUrl", error: e, stackTrace: s);
+      logger.e("DioException during PDF URL fetch or download for $pdfMetadataApiUrl", error: e, stackTrace: s);
       if (mounted) {
         setState(() {
-          _pdfLoadingError = "获取合同文件失败 (API/Download): ${e.response?.data ?? e.message}";
+          _pdfLoadingError = "获取合同文件失败 (网络): ${e.response?.data?['message'] ?? e.response?.data ?? e.message}";
           _isPdfLoading = false;
         });
       }
     } catch (e, s) {
-      logger.e("Unexpected error during PDF fetch/download for $pdfMetaApiUrl", error: e, stackTrace: s);
+      logger.e("Unexpected error during PDF URL fetch or download for $pdfMetadataApiUrl", error: e, stackTrace: s);
       if (mounted) {
         setState(() {
           _pdfLoadingError = "获取合同文件时发生意外错误: ${e.toString()}";
@@ -178,7 +190,7 @@ class _SalesOrderApprovalPageState
     _remarksController.clear();
     final notifier = ref.read(salesOrderNotifierProvider.notifier);
 
-    showDialog( /* ... Same as previous version ... */
+    showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
@@ -227,13 +239,14 @@ class _SalesOrderApprovalPageState
               onPressed: () async {
                 if (_formKeyInDialog.currentState!.validate()) {
                   final remarks = _remarksController.text.trim();
-                  Navigator.of(dialogContext).pop();
+                  Navigator.of(dialogContext).pop(); // Close dialog
 
-                  bool success = false;
+                  // The notifier methods (approveOrder, rejectOrder) will set the approvalState
+                  // which will be caught by the ref.listen in the build method.
                   if (action == ApprovalAction.approve) {
-                    success = await notifier.approveOrder(widget.orderId, remarks);
+                    await notifier.approveOrder(widget.orderId);
                   } else {
-                    success = await notifier.rejectOrder(widget.orderId, remarks);
+                    await notifier.rejectOrder(widget.orderId);
                   }
                 }
               },
@@ -258,19 +271,11 @@ class _SalesOrderApprovalPageState
       salesOrderNotifierProvider.select((s) => s.selectedOrder),
           (previousOrder, newOrder) {
         if (newOrder != null && newOrder.id.toString() == widget.orderId) {
-          if (newOrder.contractFile.isNotEmpty) { // Assuming contractFile is still the identifier for the meta-API
-            if (!_isPdfLoading && _localPdfPath == null && _pdfLoadingError.isEmpty) {
-              logger.d("Order details available/updated, contractFile identifier: '${newOrder.contractFile}'. Attempting to fetch PDF URL and download for order ${newOrder.no}");
-              _fetchPdfUrlAndDownload(newOrder);
-            }
-          } else {
-            if(mounted) {
-              setState(() {
-                _pdfLoadingError = "此订单没有合同文件标识。";
-                _localPdfPath = null;
-                _isPdfLoading = false;
-              });
-            }
+          // No longer checking newOrder.contractFile.isNotEmpty here.
+          // We always try to fetch the PDF URL via API if the order is loaded.
+          if (!_isPdfLoading && _localPdfPath == null && _pdfLoadingError.isEmpty) {
+            logger.d("Order details available/updated for order ${newOrder.no}. Attempting to fetch PDF URL via API.");
+            _fetchContractUrlAndDisplayPdf(newOrder);
           }
         }
       },
@@ -289,8 +294,10 @@ class _SalesOrderApprovalPageState
           int popCount = 0;
           Navigator.of(context).popUntil((route) {
             popCount++;
-            bool fromDetailPage = ModalRoute.of(context)?.settings.name == '/sales_order_detail';
-            return popCount == (fromDetailPage ? 2 : 1);
+            // Try to determine if coming from detail page to pop 2, else pop 1
+            // This is a bit fragile; a more robust routing solution might be better.
+            bool fromDetailPage = (ModalRoute.of(context)?.settings.name == '/sales_order_detail_page_route_name'); // You'd need to set this name when navigating
+            return popCount == (fromDetailPage ? 2 : 1); // Pop current page, and detail if from there
           });
         } else if (next.approvalState == ScreenState.error) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -308,7 +315,7 @@ class _SalesOrderApprovalPageState
     if (salesOrderState.detailState == ScreenState.loading && order == null) {
       bodyContent = const Center(child: CircularProgressIndicator(semanticsLabel: '加载订单信息...'));
     } else if (order == null) {
-      bodyContent = Center( /* ... Error UI for order loading (same as before) ... */
+      bodyContent = Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -332,7 +339,7 @@ class _SalesOrderApprovalPageState
       );
     } else { // Order is loaded
       if (_isPdfLoading) {
-        bodyContent = const Center(child: Column( /* ... Loading PDF UI (same as before) ... */
+        bodyContent = const Center(child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(semanticsLabel: '加载合同中...'),
@@ -341,7 +348,7 @@ class _SalesOrderApprovalPageState
           ],
         ));
       } else if (_pdfLoadingError.isNotEmpty) {
-        bodyContent = Center( /* ... PDF Error UI (same as before) ... */
+        bodyContent = Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -354,17 +361,13 @@ class _SalesOrderApprovalPageState
                   Text(_pdfLoadingError, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center,),
                   const SizedBox(height:10),
                   ElevatedButton(onPressed: (){
-                    if (order.contractFile.isNotEmpty) {
-                      _fetchPdfUrlAndDownload(order);
-                    } else {
-                      ref.read(salesOrderNotifierProvider.notifier).fetchOrderDetail(widget.orderId);
-                    }
+                    _fetchContractUrlAndDisplayPdf(order); // Retry fetching
                   }, child: const Text("重试加载PDF"))
                 ]),
           ),
         );
       } else if (_localPdfPath != null) {
-        bodyContent = PDFView( /* ... PDFView setup (same as before) ... */
+        bodyContent = PDFView(
           filePath: _localPdfPath!,
           enableSwipe: true,
           swipeHorizontal: false,
@@ -396,15 +399,15 @@ class _SalesOrderApprovalPageState
           },
         );
       } else {
-        bodyContent = const Center(child: Text("没有合同文件可供预览或链接无效。"));
+        bodyContent = const Center(child: Text("没有合同文件可供预览，或未能获取链接。"));
       }
     }
 
     return Scaffold(
-      appBar: AppBar( /* ... AppBar setup (same as before) ... */
+      appBar: AppBar(
         title: Text(order != null ? '审批: ${order.no}' : '订单审批'),
         actions: order == null || salesOrderState.approvalState == ScreenState.submitting || _isPdfLoading
-            ? []
+            ? [] // No actions if order not loaded or submitting/pdf loading
             : <Widget>[
           TextButton(
             onPressed: () => _showApprovalDialog(context, ApprovalAction.reject, order),
@@ -421,7 +424,7 @@ class _SalesOrderApprovalPageState
       ),
       body: bodyContent,
       bottomNavigationBar: _localPdfPath != null && !_isPdfLoading && _pdfLoadingError.isEmpty && _pdfPages != null && _pdfPages! > 0
-          ? Container( /* ... Page count display (same as before) ... */
+          ? Container(
         padding: const EdgeInsets.all(8.0),
         color: Colors.black.withOpacity(0.1),
         child: Text(

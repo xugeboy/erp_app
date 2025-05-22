@@ -3,10 +3,12 @@ import '../entities/sales_order_entity.dart';
 abstract class SalesOrderRepository {
   Future<List<SalesOrderEntity>> getSalesOrders({
     String? orderNumberQuery,
-    String? statusFilter,
+    int? statusFilter,
+    required int pageNo,
+    required int pageSize,
   });
 
-  Future<SalesOrderEntity> getSalesOrderDetail(String orderId);
+  Future<SalesOrderEntity> getSalesOrderDetail(int orderId);
 
-  Future<void> updateSalesOrderStatus(String orderId, String newStatus, String? remarks);
+  Future<void> updateSalesOrderStatus(int orderId, int newStatus);
 }

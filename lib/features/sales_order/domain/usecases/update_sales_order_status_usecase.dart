@@ -8,13 +8,12 @@ class UpdateSalesOrderStatusUseCase {
   UpdateSalesOrderStatusUseCase(this.repository);
 
   Future<void> call({
-    required String orderId,
-    required String newStatus, // This will be the "Approved" or "Rejected" string
-    String? remarks,
+    required int orderId,
+    required int newStatus
   }) async {
     // Here you might map the "Approved" / "Rejected" string to an integer code
     // if your repository/API expects an integer status.
     // For now, assuming repository handles the string status or it's already mapped.
-    return repository.updateSalesOrderStatus(orderId, newStatus, remarks);
+    return repository.updateSalesOrderStatus(orderId, newStatus);
   }
 }

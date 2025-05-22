@@ -307,7 +307,7 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => SalesOrderDetailPage(orderId: order.id.toString()),
+                              builder: (_) => SalesOrderDetailPage(orderId: order.id),
                             ),
                           );
                         },

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:erp_app/features/sales_order/providers/sales_order_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/providers/auth_provider.dart';
 import '../data/datasources/sales_order_remote_data_source.dart';
 import '../data/datasources/sales_order_remote_data_source_impl.dart';
 import '../data/repositories/sales_order_repository_impl.dart';
@@ -16,43 +17,41 @@ import '../presentation/notifiers/sales_order_notifier.dart';
 
 // Provider for Dio instance (if you don't have a global one already)
 // If you have a global Dio provider, use that instead.
-final dioProvider = Provider<Dio>((ref) => Dio()); // Configure Dio as needed
 
-final salesOrderRemoteDataSourceProvider =
-Provider<SalesOrderRemoteDataSource>((ref) {
-  return SalesOrderRemoteDataSourceImpl(dio: ref.watch(dioProvider));
-});
+final salesOrderRemoteDataSourceProvider = Provider<SalesOrderRemoteDataSource>(
+      (ref) => SalesOrderRemoteDataSourceImpl(ref.read(dioProvider)),
+);
 
 final salesOrderRepositoryProvider = Provider<SalesOrderRepository>((ref) {
   return SalesOrderRepositoryImpl(
-    remoteDataSource: ref.watch(salesOrderRemoteDataSourceProvider),
+    remoteDataSource: ref.read(salesOrderRemoteDataSourceProvider),
     // networkInfo: ref.watch(networkInfoProvider), // Removed as per your setup
   );
 });
 
 // --- Domain Layer (Use Case) Providers ---
 final getSalesOrdersUseCaseProvider = Provider<GetSalesOrdersUseCase>((ref) {
-  return GetSalesOrdersUseCase(ref.watch(salesOrderRepositoryProvider));
+  return GetSalesOrdersUseCase(ref.read(salesOrderRepositoryProvider));
 });
 
 final getSalesOrderDetailUseCaseProvider =
 Provider<GetSalesOrderDetailUseCase>((ref) {
-  return GetSalesOrderDetailUseCase(ref.watch(salesOrderRepositoryProvider));
+  return GetSalesOrderDetailUseCase(ref.read(salesOrderRepositoryProvider));
 });
 
 final updateSalesOrderStatusUseCaseProvider =
 Provider<UpdateSalesOrderStatusUseCase>((ref) {
   return UpdateSalesOrderStatusUseCase(
-      ref.watch(salesOrderRepositoryProvider));
+      ref.read(salesOrderRepositoryProvider));
 });
 
 // --- Presentation Layer (Notifier) Provider ---
 final salesOrderNotifierProvider =
 StateNotifierProvider<SalesOrderNotifier, SalesOrderState>((ref) {
   return SalesOrderNotifier(
-    getSalesOrdersUseCase: ref.watch(getSalesOrdersUseCaseProvider),
-    getSalesOrderDetailUseCase: ref.watch(getSalesOrderDetailUseCaseProvider),
+    getSalesOrdersUseCase: ref.read(getSalesOrdersUseCaseProvider),
+    getSalesOrderDetailUseCase: ref.read(getSalesOrderDetailUseCaseProvider),
     updateSalesOrderStatusUseCase:
-    ref.watch(updateSalesOrderStatusUseCaseProvider),
+    ref.read(updateSalesOrderStatusUseCaseProvider),
   );
 });

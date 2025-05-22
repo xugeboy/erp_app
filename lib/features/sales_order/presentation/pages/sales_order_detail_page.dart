@@ -10,7 +10,7 @@ import '../../providers/sales_order_state.dart';
 import 'sales_order_approval_page.dart'; // For navigation
 
 class SalesOrderDetailPage extends ConsumerStatefulWidget {
-  final String orderId;
+  final int orderId;
 
   const SalesOrderDetailPage({
     super.key,
@@ -212,7 +212,7 @@ class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => SalesOrderApprovalPage(orderId: order.id.toString()),
+                            builder: (_) => SalesOrderApprovalPage(orderId: order.id),
                           ),
                         );
                       },

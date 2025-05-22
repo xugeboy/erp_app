@@ -4,11 +4,13 @@ import '../models/sales_order_model.dart';
 abstract class SalesOrderRemoteDataSource {
   Future<List<SalesOrderModel>> getSalesOrders({
     String? orderNumberQuery,
-    String? statusFilter,
+    int? statusFilter,
+    required int pageNo, // Added
+    required int pageSize, // Added
   });
 
-  Future<SalesOrderModel> getSalesOrderDetail(String orderId);
+  Future<SalesOrderModel> getSalesOrderDetail(int orderId);
 
   Future<void> updateSalesOrderStatus(
-      String orderId, String newStatus, String? remarks);
+      int orderId, int newStatus);
 }
