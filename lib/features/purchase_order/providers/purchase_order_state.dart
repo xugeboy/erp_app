@@ -1,5 +1,6 @@
 // lib/features/purchase_order/presentation/notifiers/purchase_order_state.dart
 import 'package:equatable/equatable.dart';
+import '../../sales_order/data/models/paginated_orders_result.dart';
 import '../domain/entities/purchase_order_entity.dart';
 
 enum ScreenState { initial, loading, loaded, error, submitting, success, loadingMore } // Added loadingMore
@@ -16,7 +17,6 @@ class PurchaseOrderState extends Equatable {
   final int currentPageNo;
   final int pageSize;
   final bool canLoadMore;
-  final int? totalOrdersCount; // Optional: if your API returns total count
 
   // Detail Page State
   final ScreenState detailState;
@@ -35,8 +35,7 @@ class PurchaseOrderState extends Equatable {
     this.currentStatusFilterCode,
     this.currentPageNo = 1, // Default to page 1
     this.pageSize = 10,     // Default page size
-    this.canLoadMore = true,  // Assume can load more initially
-    this.totalOrdersCount,
+    this.canLoadMore = true,
     this.detailState = ScreenState.initial,
     this.selectedOrder,
     this.detailErrorMessage = '',
@@ -58,7 +57,6 @@ class PurchaseOrderState extends Equatable {
     int? currentPageNo,
     int? pageSize, // Though typically pageSize is constant
     bool? canLoadMore,
-    int? totalOrdersCount,
     bool clearTotalOrdersCount = false,
     ScreenState? detailState,
     PurchaseOrderEntity? selectedOrder,
@@ -79,7 +77,6 @@ class PurchaseOrderState extends Equatable {
       currentPageNo: currentPageNo ?? this.currentPageNo,
       pageSize: pageSize ?? this.pageSize,
       canLoadMore: canLoadMore ?? this.canLoadMore,
-      totalOrdersCount: clearTotalOrdersCount ? null : totalOrdersCount ?? this.totalOrdersCount,
       detailState: detailState ?? this.detailState,
       selectedOrder:
       clearSelectedOrder ? null : selectedOrder ?? this.selectedOrder,
@@ -99,7 +96,6 @@ class PurchaseOrderState extends Equatable {
     currentPageNo,
     pageSize,
     canLoadMore,
-    totalOrdersCount,
     detailState,
     selectedOrder,
     detailErrorMessage,

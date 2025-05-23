@@ -86,9 +86,8 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
   Color _getStatusColor(BuildContext context, int statusCode) {
     // Create a dummy entity just to use the statusString getter logic
     final tempEntity = PurchaseOrderEntity(
-        id: 0, no: '', status: statusCode, orderType: 0, shippingFee: 0,
-        orderTime: DateTime.now(), leadTime: DateTime.now(), totalPrice: 0,
-        depositPrice: 0, currency: 0, receiptPrice: 0, creditPeriod: 0);
+        id: 0, no: '', status: statusCode, orderType: 0,
+        orderTime: DateTime.now(), leadTime: DateTime.now(), totalPrice: 0, settlement: 1);
     String statusDisplay = tempEntity.statusString;
 
     if (statusDisplay.contains("待审批") || statusDisplay.contains("待生产") || statusDisplay.contains("待出货") || statusDisplay.contains("草稿")) {
@@ -147,7 +146,7 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
     } else {
       // Order details are loaded
       final NumberFormat currencyFormatter = NumberFormat.currency(
-          locale: locale, symbol: order.currencySymbol);
+          locale: locale, symbol: "¥");
 
       content = SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -171,31 +170,26 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
                 const Divider(),
                 const SizedBox(height: 10),
                 _buildDetailRow(context, '订单单号:', order.no, icon: Icons.receipt_long),
-                _buildDetailRow(context, '客户名称:', order.customerName, icon: Icons.person_outline),
+                _buildDetailRow(context, '供应商:', order.supplierName, icon: Icons.person_outline),
                 _buildDetailRow(context, '创建人:', order.creatorName, icon: Icons.account_circle_outlined),
                 _buildDetailRow(context, '订单状态:', order.statusString,
                     isStatus: true, statusColor: _getStatusColor(context, order.status), icon: Icons.flag_outlined),
                 _buildDetailRow(context, '订单类型:', order.orderTypeString, icon: Icons.category_outlined),
-                _buildDetailRow(context, '币种:', order.currencyString, icon: Icons.attach_money),
+                _buildDetailRow(context, '结算方式:', order.settlementString, icon: Icons.attach_money),
                 const SizedBox(height: 10),
                 Text("价格信息", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const Divider(height: 20, thickness: 1),
                 _buildDetailRow(context, '总金额:', currencyFormatter.format(order.totalPrice)),
-                _buildDetailRow(context, '定金金额:', currencyFormatter.format(order.depositPrice)),
-                _buildDetailRow(context, '已收定金:', currencyFormatter.format(order.receiptPrice)),
-                _buildDetailRow(context, '运费:', currencyFormatter.format(order.shippingFee)),
                 const SizedBox(height: 10),
                 Text("时间与条款", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const Divider(height: 20, thickness: 1),
                 _buildDetailRow(context, '下单时间:', dateFormatter.format(order.orderTime), icon: Icons.calendar_today_outlined),
                 _buildDetailRow(context, '交货时间:', dateFormatter.format(order.leadTime), icon: Icons.schedule_outlined),
-                if (order.orderTypeString == "赊销") // "赊销" 是您在 PurchaseOrderEntity 中定义的 orderTypeString
-                  _buildDetailRow(context, '账期 (天):', order.creditPeriod.toString(), icon: Icons.timer_outlined),                const SizedBox(height: 10),
                 Text("其他信息", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const Divider(height: 20, thickness: 1),
                 _buildDetailRow(context, '备注:', order.remark, icon: Icons.notes_outlined),
                 const SizedBox(height: 30),
-                if (order.statusString == "待审批") // Check against the display string from your entity
+                if (order.statusString == "待初审"|| order.statusString == "待终审") // Check against the display string from your entity
                   Center(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.approval_outlined),

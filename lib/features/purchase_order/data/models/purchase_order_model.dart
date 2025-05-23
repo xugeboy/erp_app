@@ -8,17 +8,13 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
     required super.no,
     required super.status,
     super.orderType,
-    super.shippingFee,
-    super.customerName,
+    super.supplierName,
     required super.orderTime,
     required super.leadTime,
     super.totalPrice,
-    super.depositPrice,
     super.remark,
     super.creatorName,
-    super.currency,
-    super.receiptPrice,
-    super.creditPeriod,
+    super.settlement
   });
 
   factory PurchaseOrderModel.fromJson(Map<String, dynamic> json) {
@@ -60,18 +56,14 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
       id: parseInt(json['id'])?? 0,
       no: json['no'] as String? ?? '',
       status: parseInt(json['status'])?? 0,
-      orderType: parseInt(json['orderType'] ?? json['order_type']),
-      shippingFee: parseDouble(json['shippingFee'] ?? json['shipping_fee']),
-      customerName: json['customerName'] ?? json['customer_name'] as String?,
-      orderTime: parseDateTime(json['orderTime'] ?? json['order_time'])?? DateTime(2024),
-      leadTime: parseDateTime(json['leadTime'] ?? json['lead_time'])?? DateTime(2024),
-      totalPrice: parseDouble(json['totalPrice'] ?? json['total_price']),
-      depositPrice: parseDouble(json['depositPrice'] ?? json['deposit_price']),
+      orderType: parseInt(json['orderType']),
+      supplierName: json['supplierName'] as String?,
+      orderTime: parseDateTime(json['orderTime'] )?? DateTime(2024),
+      leadTime: parseDateTime(json['leadTime'] )?? DateTime(2024),
+      totalPrice: parseDouble(json['totalPrice'] ),
       remark: json['remark'] as String?,
       creatorName: json['creatorName'] ?? json['creator_name'] as String?,
-      currency: parseInt(json['currency']),
-      receiptPrice: parseDouble(json['receiptPrice']) ?? 0.0,
-      creditPeriod: parseInt(json['creditPeriod']),
+      settlement: parseInt(json['settlement']),
     );
   }
 
@@ -82,17 +74,13 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
       'no': no,
       'status': status,
       'orderType': orderType, // Or 'order_type' if backend expects snake_case
-      'shippingFee': shippingFee,
-      'customerName': customerName,
+      'supplierName': supplierName,
       'orderTime': orderTime, // Common format for sending DateTime
       'leadTime': leadTime,
       'totalPrice': totalPrice,
-      'depositPrice': depositPrice,
       'remark': remark,
       'creatorName': creatorName,
-      'currency': currency,
-      'receiptPrice': receiptPrice,
-      'creditPeriod': creditPeriod,
+      'settlement': settlement,
     };
   }
 }

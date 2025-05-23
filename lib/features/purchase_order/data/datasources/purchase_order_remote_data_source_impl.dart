@@ -1,23 +1,26 @@
 // lib/features/purchase_order/data/datasources/purchase_order_remote_data_source_impl.dart
 import 'package:dio/dio.dart';
 import '../../../../core/utils/logger.dart';
+import '../models/paginated_orders_result.dart';
 import '../models/purchase_order_model.dart';
 import 'purchase_order_remote_data_source.dart';
+
 
 class PurchaseOrderRemoteDataSourceImpl implements PurchaseOrderRemoteDataSource {
   final Dio dio;
 
   final String _getPurchaseOrdersUrl =
-      'https://erp.xiangletools.store:30443/admin-api/erp/sale-order/page';
+      'https://erp.xiangletools.store:30443/admin-api/erp/purchase-order/page';
   final String _getPurchaseOrderDetailBaseUrl =
-      'https://erp.xiangletools.store:30443/admin-api/erp/sale-order/get';
+      'https://erp.xiangletools.store:30443/admin-api/erp/purchase-order/get';
   final String _updatePurchaseOrderStatusBaseUrl =
-      'https://erp.xiangletools.store:30443/admin-api/erp/sale-order/update-status';
+      'https://erp.xiangletools.store:30443/admin-api/erp/purchase-order/update-status';
 
   PurchaseOrderRemoteDataSourceImpl(this.dio);
 
+
   @override
-  Future<List<PurchaseOrderModel>> getPurchaseOrders({
+  Future<PaginatedOrdersResult> getPurchaseOrders({
     String? orderNumberQuery,
     int? statusFilter, // Changed to int? to match the interface
     required int pageNo,
@@ -50,32 +53,21 @@ class PurchaseOrderRemoteDataSourceImpl implements PurchaseOrderRemoteDataSource
         // options: Options(headers: {'Custom-Purchase-Header': 'value'}),
       );
 
+      int totalCount = 0;
       // Check the structure of the response data
       // Your API might return a list directly, or a map containing the list and total count.
-      if (response.data is List) {
-        // Case 1: API returns a list directly
-        final List<dynamic> responseData = response.data as List<dynamic>;
-        logger.d(
-            'DataSource: Purchase orders data (direct list) received for page $pageNo, count: ${responseData.length}');
-        return responseData
-            .map((data) =>
-            PurchaseOrderModel.fromJson(data as Map<String, dynamic>))
-            .toList();
-      } else if (response.data is Map<String, dynamic>) {
+      if (response.data is Map<String, dynamic>) {
         // Case 2: API returns a map, e.g., {"data": {"list": [...], "total": ...}} or {"list": [...]}
         final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
         List<dynamic>? listData;
 
         // Try to find the list in common structures
-        if (responseMap.containsKey('list') && responseMap['list'] is List) {
-          listData = responseMap['list'] as List<dynamic>;
-        } else if (responseMap.containsKey('data') && responseMap['data'] is Map) {
+        if (responseMap.containsKey('data') && responseMap['data'] is Map) {
           final dataMap = responseMap['data'] as Map<String, dynamic>;
           if (dataMap.containsKey('list') && dataMap['list'] is List) {
             listData = dataMap['list'] as List<dynamic>;
           }
-          // You could also extract total count here if needed by your notifier:
-          int? totalCount = dataMap['total'] as int?;
+          totalCount = dataMap['total'] as int;
         }
         // Add more checks if your API has a different structure for the list
 
@@ -99,10 +91,11 @@ class PurchaseOrderRemoteDataSourceImpl implements PurchaseOrderRemoteDataSource
 
           logger.d(
               'DataSource: Purchase orders data (from wrapped list) received for page $pageNo, count: ${listData.length}');
-          return filteredList
+          final List<PurchaseOrderModel> models = filteredList
               .map((data) =>
               PurchaseOrderModel.fromJson(data as Map<String, dynamic>))
               .toList();
+          return PaginatedOrdersResult(orders: models, totalCount: totalCount);
         } else {
           logger.w(
               'DataSource: Response is a Map, but "list" key not found or not a List. Data: ${response.data}');

@@ -1,7 +1,8 @@
+import '../../../purchase_order/data/models/paginated_orders_result.dart';
 import '../entities/purchase_order_entity.dart';
 
 abstract class PurchaseOrderRepository {
-  Future<List<PurchaseOrderEntity>> getPurchaseOrders({
+  Future<PaginatedOrdersResult> getPurchaseOrders({
     String? orderNumberQuery,
     int? statusFilter,
     required int pageNo,

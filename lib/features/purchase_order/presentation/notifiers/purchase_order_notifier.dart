@@ -31,107 +31,100 @@ class PurchaseOrderNotifier extends StateNotifier<PurchaseOrderState> {
   /// - [loadFirstPage]: If true, clears existing orders and fetches page 1.
   ///   Used for initial loads, refreshes, or when filters change.
   Future<void> fetchOrders({
-    String? orderNumber,
-    int? status, // Nullable int for status code
-    int? pageNoToFetch,
-    bool loadFirstPage = false,
+    String? orderNumber, // For explicit filter changes
+    int? status,        // For explicit filter changes
+    required int pageNoToFetch, // Page to fetch
   }) async {
-    int pageToFetch;
-    List<PurchaseOrderEntity> currentOrders = state.orders;
+    String queryToUse = orderNumber ?? state.currentOrderNumberQuery;
+    int? statusToUse = status;
+    bool filtersChanged = (orderNumber != null && orderNumber != state.currentOrderNumberQuery) ||
+        (status != state.currentStatusFilterCode); // status can be null
 
-    if (loadFirstPage) {
-      pageToFetch = 1;
-      currentOrders = []; // Clear orders for a fresh load/filter
+    if (filtersChanged) {
+      // If filters changed, we are fetching page 1, so update state accordingly
       state = state.copyWith(
-        listState: ScreenState.loading,
-        orders: currentOrders,
-        currentPageNo: pageToFetch,
-        canLoadMore: true, // Assume can load more when starting fresh
-        listErrorMessage: '',
-        currentOrderNumberQuery: orderNumber ?? state.currentOrderNumberQuery, // Use new or existing
-        currentStatusFilterCode: status, // Use new status, allow null for "All"
-        clearStatusFilter: status == null && orderNumber == null, // Logic for clearing
+        currentOrderNumberQuery: queryToUse,
+        currentStatusFilterCode: statusToUse,
+        clearStatusFilter: status == null, // Clear if new status is null
+        currentPageNo: 1, // Reset to page 1 on filter change
+        orders: [], // Clear old orders
+        canLoadMore: true, // Assume can load more with new filters
       );
-    } else {
-      pageToFetch = pageNoToFetch ?? state.currentPageNo;
-      if (pageToFetch > state.currentPageNo && state.listState != ScreenState.loadingMore) { // Loading more
-        state = state.copyWith(listState: ScreenState.loadingMore);
-      } else if (pageToFetch == 1 && currentOrders.isEmpty) { // Initial page 1 load
-        state = state.copyWith(listState: ScreenState.loading);
-      }
-      // Persist filters if only pageNo is changing
-      if (orderNumber != null) state = state.copyWith(currentOrderNumberQuery: orderNumber);
-      if (status != null || (orderNumber == null && pageNoToFetch == null)) {
-        // If status is explicitly passed, or if no other params are passed (implying a general refresh),
-        // update/clear the status filter.
-        state = state.copyWith(currentStatusFilterCode: status, clearStatusFilter: status == null);
-      }
+      pageNoToFetch = 1; // Override to 1 if filters changed
     }
 
-    // Use the most up-to-date filter values from the state for the API call
-    final String queryToUse = state.currentOrderNumberQuery;
-    final int? statusToUse = state.currentStatusFilterCode;
 
+    state = state.copyWith(listState: ScreenState.loading, listErrorMessage: '');
     logger.d(
-        "Notifier: Fetching orders. Page: $pageToFetch, Query: '$queryToUse', Status Code: $statusToUse");
-
+        "Notifier: Fetching orders. Page: $pageNoToFetch, Query: '$queryToUse', Status Code: $statusToUse");
     try {
-      final newOrders = await _getPurchaseOrdersUseCase(
+      final paginatedOrdersResult = await _getPurchaseOrdersUseCase(
         orderNumberQuery: queryToUse.isEmpty ? null : queryToUse,
-        statusFilter: statusToUse, // Pass int? directly
-        pageNo: pageToFetch,
+        statusFilter: statusToUse,
+        pageNo: pageNoToFetch,
         pageSize: state.pageSize,
       );
+      final newOrders = paginatedOrdersResult.orders;
+      final totalOrdersCount = paginatedOrdersResult.totalCount;
+      bool canActuallyLoadMore;
+      canActuallyLoadMore = (pageNoToFetch * state.pageSize) < totalOrdersCount;
 
       state = state.copyWith(
         listState: ScreenState.loaded,
-        orders: loadFirstPage ? newOrders : [...currentOrders, ...newOrders],
-        currentPageNo: pageToFetch,
-        canLoadMore: newOrders.length == state.pageSize,
+        orders: newOrders,
+        currentPageNo: pageNoToFetch,
+        canLoadMore: canActuallyLoadMore,
+        currentStatusFilterCode: statusToUse,
         listErrorMessage: '',
       );
     } on DioException catch (e, s) {
-      logger.e("Notifier: DioException fetching orders for page $pageToFetch", error: e, stackTrace: s);
+      logger.e("Notifier: DioException fetching orders for page $pageNoToFetch", error: e, stackTrace: s);
       String errorMessage = "网络错误: ${e.message}";
       if (e.response?.data is Map && e.response?.data['message'] != null) {
         errorMessage = e.response!.data['message'].toString();
       }
       state = state.copyWith(
-          listState: ScreenState.error, listErrorMessage: errorMessage, canLoadMore: (pageToFetch > 1)); // Keep canLoadMore if it was a subsequent page load error
+          listState: ScreenState.error, listErrorMessage: errorMessage, orders: pageNoToFetch == 1 ? [] : state.orders); // Clear orders only if it was a page 1 error
     } catch (e, s) {
-      logger.e("Notifier: Exception fetching orders for page $pageToFetch", error: e, stackTrace: s);
+      logger.e("Notifier: Exception fetching orders for page $pageNoToFetch", error: e, stackTrace: s);
       state = state.copyWith(
           listState: ScreenState.error,
           listErrorMessage: "发生意外错误: ${e.toString()}",
-          canLoadMore: (pageToFetch > 1));
+          orders: pageNoToFetch == 1 ? [] : state.orders);
     }
   }
 
   void applyOrderNumberFilter(String query) {
     logger.d("Notifier: Applying order number filter: '$query'");
-    // Will set currentOrderNumberQuery in state and fetch page 1
-    fetchOrders(orderNumber: query, status: state.currentStatusFilterCode, loadFirstPage: true);
+    // Fetch page 1 with the new query and current status filter
+    fetchOrders(orderNumber: query, status: state.currentStatusFilterCode, pageNoToFetch: 1);
   }
 
   void applyStatusFilter(int? statusCode) {
     logger.d("Notifier: Applying status filter: $statusCode");
-    // Will set currentStatusFilterCode in state and fetch page 1
-    fetchOrders(orderNumber: state.currentOrderNumberQuery, status: statusCode, loadFirstPage: true);
+    // Fetch page 1 with the new status and current order number query
+    fetchOrders(orderNumber: state.currentOrderNumberQuery, status: statusCode, pageNoToFetch: 1);
   }
 
-  Future<void> loadMoreOrders() async {
-    if (state.listState == ScreenState.loadingMore || !state.canLoadMore) {
-      logger.d(
-          "Notifier: Load more skipped. State: ${state.listState}, CanLoadMore: ${state.canLoadMore}");
-      return;
-    }
-    logger.d(
-        "Notifier: Loading more orders. Current page: ${state.currentPageNo}, Attempting page: ${state.currentPageNo + 1}");
-    // Fetch orders for the next page, preserving current filters
+  Future<void> goToNextPage() async {
+    if (!state.canLoadMore || state.listState == ScreenState.loading) return;
+    logger.d("Notifier: Going to next page. Current: ${state.currentPageNo}");
     await fetchOrders(
+        pageNoToFetch: state.currentPageNo + 1,
+        // Filters are taken from current state
         orderNumber: state.currentOrderNumberQuery,
-        status: state.currentStatusFilterCode,
-        pageNoToFetch: state.currentPageNo + 1
+        status: state.currentStatusFilterCode
+    );
+  }
+
+  Future<void> goToPreviousPage() async {
+    if (state.currentPageNo <= 1 || state.listState == ScreenState.loading) return;
+    logger.d("Notifier: Going to previous page. Current: ${state.currentPageNo}");
+    await fetchOrders(
+        pageNoToFetch: state.currentPageNo - 1,
+        // Filters are taken from current state
+        orderNumber: state.currentOrderNumberQuery,
+        status: state.currentStatusFilterCode
     );
   }
 
@@ -190,7 +183,7 @@ class PurchaseOrderNotifier extends StateNotifier<PurchaseOrderState> {
       await fetchOrders(
           orderNumber: state.currentOrderNumberQuery,
           status: state.currentStatusFilterCode,
-          loadFirstPage: true
+          pageNoToFetch: 1
       );
       return true;
     } on DioException catch (e,s) {

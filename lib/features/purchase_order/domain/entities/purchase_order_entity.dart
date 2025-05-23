@@ -3,37 +3,29 @@ import 'package:equatable/equatable.dart';
 
 class PurchaseOrderEntity extends Equatable {
   final int id; // private Long id;
-  final String no; // private String no; (销售单编号)
-  final int status; // private Integer status; (销售状态)
-  final int? orderType; // private Integer orderType; (销售订单类型)
-  final double? shippingFee; // private BigDecimal shippingFee; (销售订单运费)
-  final String? customerName; // private String customerName; (客户名称) - nullable based on example
+  final String no; // private String no; (编号)
+  final int status; // private Integer status; (状态)
+  final int? orderType; // private Integer orderType; (订单类型)
+  final String? supplierName; // private String customerName; (客户名称) - nullable based on example
   final DateTime orderTime; // private LocalDateTime orderTime; (下单时间)
   final DateTime leadTime; // private LocalDateTime leadTime; (交货时间)
   final double? totalPrice; // private BigDecimal totalPrice; (最终合计价格)
-  final double? depositPrice; // private BigDecimal depositPrice; (定金金额)
   final String? remark; // private String remark; (备注) - nullable based on example
   final String? creatorName; // private String creatorName; (创建人名称) - nullable
-  final int? currency; // private Integer currency; (币种)
-  final double? receiptPrice; // private BigDecimal receiptPrice; (收取定金)
-  final int? creditPeriod; // private Integer creditPeriod; (账期)
+  final int? settlement; // private Integer settlement; (结算方式)
 
   const PurchaseOrderEntity({
     required this.id,
     required this.no,
     required this.status,
     this.orderType,
-    this.shippingFee,
-    this.customerName,
+    this.supplierName,
     required this.orderTime,
     required this.leadTime,
     this.totalPrice,
-    this.depositPrice,
     this.remark,
     this.creatorName,
-    this.currency,
-    this.receiptPrice,
-    this.creditPeriod,
+    this.settlement,
   });
 
   @override
@@ -42,43 +34,29 @@ class PurchaseOrderEntity extends Equatable {
     no,
     status,
     orderType,
-    shippingFee,
-    customerName,
+    supplierName,
     orderTime,
     leadTime,
     totalPrice,
-    depositPrice,
     remark,
     creatorName,
-    currency,
-    receiptPrice,
-    creditPeriod
+    settlement,
   ];
 
   String get statusString {
     switch (status) {
-      case 0:
-        return "待审批"; // WAIT_AUDIT
-      case 1:
-        return "未收款"; // UNPAID
-      case 2:
-        return "待生产"; // PENDING_PRODUCTION
-      case 3:
-        return "待出货"; // NOT_SHIPPED
-      case 4:
-        return "已出货"; // SHIPPED
-      case 5:
-        return "已出货待报关"; // SHIPPED_NOT_DECLARED
-      case 6:
-        return "已报关待开票"; // DECLARED_NOT_INVOICED
-      case 7:
-        return "已出货待开票"; // SHIPPED_NOT_INVOICED
-      case 8:
-        return "已开票"; // INVOICED
-      // case 98:
-        // return "草稿"; // DRAFT
+      // case 0:
+        // return "草稿"; // WAIT_AUDIT
+      case 10:
+        return "待初审"; // UNPAID
+      case 20:
+        return "待终审"; // PENDING_PRODUCTION
+      case 30:
+        return "已审核"; // NOT_SHIPPED
+      case 40:
+        return "已传"; // SHIPPED
       case 99:
-        return "已驳回"; // AUDIT_REJECT
+        return "驳回"; // AUDIT_REJECT
       default:
         return '未知状态 ($status)';
     }
@@ -86,40 +64,23 @@ class PurchaseOrderEntity extends Equatable {
 
   String get orderTypeString {
     switch (orderType) {
-      case 10: return "库存单";       // STOCK_ORDER
-      case 11: return "含税运13%";    // HSY_ORDER
-      case 12: return "不含税运";     // BHSY_ORDER
-      case 13: return "含税不含运13%"; // HSBHY_ORDER
-      case 14: return "含运不含税";   // HYBHS_ORDER
-      case 15: return "赊销";         // CREDIT_ORDER (Note: also appears as 24)
-      case 20: return "一达通订单";   // YIDATONG_ORDER
-      case 21: return "翔乐基本户订单"; // XIANGLE_BASIC_ACCOUNT_ORDER
-      case 22: return "便捷发货";     // CONVENIENT_SHIPPING
-      case 23: return "XT订单";       // XT_ORDER
-      case 24: return "赊销";         // EX_CREDIT_ORDER (Note: same as 15)
+      case 0: return "库存单";       // STOCK_ORDER
+      case 1: return "非库存单";       // STOCK_ORDER
       default: return '未知类型 ($orderType)';
     }
   }
-  String get currencyString {
-    switch (currency) {
+  String get settlementString {
+    switch (settlement) {
+      case 1:
+        return "开票后30天内付清全款"; // CNY
       case 2:
-        return "人民币"; // CNY
-      case 1:
-        return "美元"; // USD
+        return "款到发货"; // USD
+      case 3:
+        return "预付_____%定金，出货前付清全款"; // CNY
+      case 4:
+        return "含税运，开专票，发货前付款"; // USD
       default:
-        return '未知币种 ($currency)';
-    }
-  }
-
-  /// Helper to get the currency symbol.
-  String get currencySymbol {
-    switch (currency) {
-      case 0:
-        return "¥"; // CNY
-      case 1:
-        return "\$"; // USD
-      default:
-        return ""; // No symbol for unknown
+        return '未设置结算方式 ($settlement)';
     }
   }
 }

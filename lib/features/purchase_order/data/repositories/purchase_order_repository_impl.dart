@@ -1,6 +1,7 @@
 // lib/features/purchase_order/data/repositories/purchase_order_repository_impl.dart
 import 'package:dio/dio.dart'; // Needed if you specifically catch DioException here
 import '../../../../core/utils/logger.dart'; // Your logger
+import '../../../purchase_order/data/models/paginated_orders_result.dart';
 import '../../domain/entities/purchase_order_entity.dart';
 import '../../domain/repositories/purchase_order_repository.dart';
 import '../datasources/purchase_order_remote_data_source.dart';
@@ -13,7 +14,7 @@ class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {
   });
 
   @override
-  Future<List<PurchaseOrderEntity>> getPurchaseOrders({
+  Future<PaginatedOrdersResult> getPurchaseOrders({
     String? orderNumberQuery,
     int? statusFilter,
     required int pageNo,
@@ -26,7 +27,7 @@ class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {
           pageNo: pageNo,
           pageSize: pageSize);
       logger.d(
-          'Repository: Received ${remoteOrders.length} orders from remoteDataSource');
+          'Repository: Received ${remoteOrders.orders.length} orders from remoteDataSource');
       return remoteOrders;
     } on DioException catch (e, s) { // Catch DioException and its stackTrace
       logger.e('Repository: DioException during getPurchaseOrders', error: e, stackTrace: s);
