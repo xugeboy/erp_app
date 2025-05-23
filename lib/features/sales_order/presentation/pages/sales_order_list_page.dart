@@ -151,8 +151,9 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
                     ),
                     // Call notifier method when text is submitted (e.g., user presses enter)
                     onSubmitted: (value) {
-                      logger.d("Search submitted with query: '$value'");
-                      salesOrderNotifier.applyOrderNumberFilter(value);
+                      if(value.isNotEmpty) {
+                        salesOrderNotifier.applyOrderNumberFilter(value);
+                      }
                     },
                   ),
                 ),
