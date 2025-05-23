@@ -1,7 +1,7 @@
 // lib/features/sales_order/domain/entities/purchase_order_entity.dart
 import 'package:equatable/equatable.dart';
 
-class SalesOrderEntity extends Equatable {
+class PurchaseOrderEntity extends Equatable {
   final int id; // private Long id;
   final String no; // private String no; (销售单编号)
   final int status; // private Integer status; (销售状态)
@@ -18,7 +18,7 @@ class SalesOrderEntity extends Equatable {
   final double? receiptPrice; // private BigDecimal receiptPrice; (收取定金)
   final int? creditPeriod; // private Integer creditPeriod; (账期)
 
-  const SalesOrderEntity({
+  const PurchaseOrderEntity({
     required this.id,
     required this.no,
     required this.status,

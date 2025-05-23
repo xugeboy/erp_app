@@ -1,8 +1,9 @@
-// lib/features/sales_order/data/datasources/sales_order_remote_data_source.dart
+// lib/features/sales_order/data/datasources/purchase_order_remote_data_source.dart
+import '../models/paginated_orders_result.dart';
 import '../models/sales_order_model.dart';
 
 abstract class SalesOrderRemoteDataSource {
-  Future<List<SalesOrderModel>> getSalesOrders({
+  Future<PaginatedOrdersResult> getSalesOrders({
     String? orderNumberQuery,
     int? statusFilter,
     required int pageNo, // Added

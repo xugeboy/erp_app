@@ -1,22 +1,22 @@
-// lib/features/sales_order/presentation/pages/purchase_order_list_page.dart
+// lib/features/purchase_order/presentation/pages/purchase_order_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import Riverpod
 import 'package:intl/intl.dart'; // For formatting currency and dates
 
-import '../../domain/entities/sales_order_entity.dart'; // Your SalesOrderEntity
-import '../../providers/sales_order_providers.dart';
-import '../../providers/sales_order_state.dart';
+import '../../domain/entities/purchase_order_entity.dart'; // Your PurchaseOrderEntity
+import '../../providers/purchase_order_providers.dart';
+import '../../providers/purchase_order_state.dart';
 import '../../../../core/utils/logger.dart'; // Your logger
-import 'sales_order_detail_page.dart'; // For navigation to the detail page
+import 'purchase_order_detail_page.dart'; // For navigation to the detail page
 
-class SalesOrderListPage extends ConsumerStatefulWidget {
-  const SalesOrderListPage({super.key});
+class PurchaseOrderListPage extends ConsumerStatefulWidget {
+  const PurchaseOrderListPage({super.key});
 
   @override
-  ConsumerState<SalesOrderListPage> createState() => _SalesOrderListPageState();
+  ConsumerState<PurchaseOrderListPage> createState() => _PurchaseOrderListPageState();
 }
 
-class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
+class _PurchaseOrderListPageState extends ConsumerState<PurchaseOrderListPage> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedStatusString; // UI display string for status filter
   int? _selectedStatusCode;   // Actual status code for filtering
@@ -40,7 +40,7 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
     // We use addPostFrameCallback to ensure `ref` is accessible and providers are ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Get current filter values from notifier state (if persisted or set by default)
-      final initialNotifierState = ref.read(salesOrderNotifierProvider);
+      final initialNotifierState = ref.read(purchaseOrderNotifierProvider);
       _searchController.text = initialNotifierState.currentOrderNumberQuery;
       _selectedStatusCode = initialNotifierState.currentStatusFilterCode;
 
@@ -60,10 +60,10 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
       setState(() {}); // Update UI with initial filter values if they were loaded from state
 
       logger.d(
-          "SalesOrderListPage: Initializing with query: '${_searchController.text}', status code: $_selectedStatusCode");
-      ref.read(salesOrderNotifierProvider.notifier).fetchOrders(
+          "PurchaseOrderListPage: Initializing with query: '${_searchController.text}', status code: $_selectedStatusCode");
+      ref.read(purchaseOrderNotifierProvider.notifier).fetchOrders(
         orderNumber: _searchController.text.isEmpty ? null : _searchController.text,
-        status: _selectedStatusCode,pageNoToFetch: 1,
+        status: _selectedStatusCode,
       );
     });
   }
@@ -87,7 +87,7 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
   // Helper to get status color for UI elements
   Color _getStatusColor(int statusCode) {
     // Create a dummy entity just to use the statusString getter
-    final tempEntity = SalesOrderEntity(
+    final tempEntity = PurchaseOrderEntity(
         id: 0, no: '', status: statusCode, orderType: 0, shippingFee: 0,
         orderTime: DateTime.now(), leadTime: DateTime.now(), totalPrice: 0,
         depositPrice: 0, currency: 0, receiptPrice: 0, creditPeriod: 0);
@@ -106,9 +106,9 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
   @override
   Widget build(BuildContext context) {
     // Watch the state from Riverpod. This will cause the widget to rebuild when the state changes.
-    final salesOrderState = ref.watch(salesOrderNotifierProvider);
+    final purchaseOrderState = ref.watch(purchaseOrderNotifierProvider);
     // Get the notifier to call methods (actions).
-    final salesOrderNotifier = ref.read(salesOrderNotifierProvider.notifier);
+    final purchaseOrderNotifier = ref.read(purchaseOrderNotifierProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
@@ -117,14 +117,14 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             // Disable button if already loading to prevent multiple requests
-            onPressed: salesOrderState.listState == ScreenState.loading
+            onPressed: purchaseOrderState.listState == ScreenState.loading
                 ? null
                 : () {
               logger.d(
                   "Refresh button pressed. Query: '${_searchController.text}', Status Code: $_selectedStatusCode");
-              salesOrderNotifier.fetchOrders(
+              purchaseOrderNotifier.fetchOrders(
                 orderNumber: _searchController.text.isEmpty ? null : _searchController.text,
-                status: _selectedStatusCode,pageNoToFetch: 1,
+                status: _selectedStatusCode,
               );
             },
           ),
@@ -152,7 +152,7 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
                     // Call notifier method when text is submitted (e.g., user presses enter)
                     onSubmitted: (value) {
                       logger.d("Search submitted with query: '$value'");
-                      salesOrderNotifier.applyOrderNumberFilter(value);
+                      purchaseOrderNotifier.applyOrderNumberFilter(value);
                     },
                   ),
                 ),
@@ -186,7 +186,7 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
                         });
                         logger.d(
                             "Status filter changed to: $_selectedStatusString (Code: $_selectedStatusCode)");
-                        salesOrderNotifier.applyStatusFilter(_selectedStatusCode);
+                        purchaseOrderNotifier.applyStatusFilter(_selectedStatusCode);
                       },
                     ),
                   ),
@@ -197,12 +197,12 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
 
           // --- Orders List Section ---
           Expanded(
-            child: () {
-              if (salesOrderState.listState == ScreenState.loading && salesOrderState.orders.isEmpty) {
+            child: () { // Using an IIFE for cleaner conditional rendering based on state
+              if (purchaseOrderState.listState == ScreenState.loading && purchaseOrderState.orders.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (salesOrderState.listState == ScreenState.error && salesOrderState.orders.isEmpty) {
-                return Center( /* ... Error UI ... */
+              if (purchaseOrderState.listState == ScreenState.error) {
+                return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -210,17 +210,16 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
                       children: [
                         const Icon(Icons.error_outline, color: Colors.red, size: 48),
                         const SizedBox(height: 16),
-                        Text('加载失败: ${salesOrderState.listErrorMessage}',
+                        Text('加载失败: ${purchaseOrderState.listErrorMessage}',
                             textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           icon: const Icon(Icons.refresh),
                           label: const Text('重试'),
                           onPressed: () {
-                            salesOrderNotifier.fetchOrders(
-                                orderNumber: _searchController.text.isEmpty ? null : _searchController.text,
-                                status: _selectedStatusCode,
-                                pageNoToFetch: 1 // 重试时加载第一页
+                            purchaseOrderNotifier.fetchOrders(
+                              orderNumber: _searchController.text.isEmpty ? null : _searchController.text,
+                              status: _selectedStatusCode,
                             );
                           },
                         )
@@ -229,8 +228,8 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
                   ),
                 );
               }
-              if (salesOrderState.orders.isEmpty && salesOrderState.listState != ScreenState.loading) {
-                return const Center( /* ... Empty State UI ... */
+              if (purchaseOrderState.orders.isEmpty) {
+                return const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -238,104 +237,77 @@ class _SalesOrderListPageState extends ConsumerState<SalesOrderListPage> {
                         SizedBox(height: 16),
                         Text('没有找到相关订单。', style: TextStyle(fontSize: 16, color: Colors.grey)),
                       ],
-                    )
-                );
+                    ));
               }
-              // 移除 RefreshIndicator，因为 AppBar 中已有刷新按钮
-              return ListView.builder(
-                // controller: _scrollController, // 不再需要
-                padding: const EdgeInsets.fromLTRB(8.0, 4.0, 8.0, 0), // 调整底部 padding
-                itemCount: salesOrderState.orders.length, // 只显示当前页的订单
-                itemBuilder: (context, index) {
-                  // 移除加载更多的逻辑
-                  final order = salesOrderState.orders[index];
-                  final itemCurrencyFormatter = NumberFormat.currency(
-                      locale: Localizations.localeOf(context).toString(),
-                      symbol: order.currencySymbol);
-
-                  return Card( /* ... ListTile UI (保持不变) ... */
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 6.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
-                      leading: CircleAvatar(
-                        backgroundColor: _getStatusColor(order.status),
-                        radius: 40,
-                        child: Text(
-                          order.statusString,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      title: Text(
-                        '订单号: ${order.no}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 6.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('客户: ${order.customerName ?? 'N/A'}'),
-                            Text('创建人: ${order.creatorName ?? 'N/A'}'),
-                            Text('金额: ${itemCurrencyFormatter.format(order.totalPrice)}'),
-                            Text('类型: ${order.orderTypeString}'),
-                            Text('下单时间: ${DateFormat('yyyy/MM/dd HH:mm').format(order.orderTime)}'),
-                          ],
-                        ),
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                      onTap: () {
-                        logger.d("Tapped on order: ${order.no}, ID: ${order.id}");
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SalesOrderDetailPage(orderId: order.id),
-                          ),
-                        );
-                      },
-                    ),
+              // Display the list of orders
+              return RefreshIndicator(
+                onRefresh: () async {
+                  await purchaseOrderNotifier.fetchOrders(
+                    orderNumber: _searchController.text.isEmpty ? null : _searchController.text,
+                    status: _selectedStatusCode,
                   );
                 },
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(8.0, 4.0, 8.0, 16.0),
+                  itemCount: purchaseOrderState.orders.length,
+                  itemBuilder: (context, index) {
+                    final order = purchaseOrderState.orders[index];
+                    // Use the currency symbol from the order entity
+                    final itemCurrencyFormatter = NumberFormat.currency(
+                        locale: Localizations.localeOf(context).toString(), // Or a fixed locale
+                        symbol: order.currencySymbol);
+
+                    return Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 6.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
+                        leading: CircleAvatar(
+                          backgroundColor: _getStatusColor(order.status),
+                          radius: 40,
+                          child: Text(
+                            order.statusString,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(
+                          '订单号: ${order.no}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 6.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('客户: ${order.customerName ?? ''}'),
+                              Text('创建人: ${order.creatorName ?? ''}'),
+                              Text('金额: ${itemCurrencyFormatter.format(order.totalPrice)}'),
+                              Text('类型: ${order.orderTypeString}'),
+                              Text('下单时间: ${DateFormat('yyyy/MM/dd').format(order.orderTime)}'),
+                            ],
+                          ),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                        onTap: () {
+                          logger.d("Tapped on order: ${order.no}, ID: ${order.id}");
+                          // Navigate to detail page, passing the order ID
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PurchaseOrderDetailPage(orderId: order.id),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
               );
-            }(),
+            }(), // Invoke the IIFE for conditional rendering
           ),
-          // --- 分页控制按钮 ---
-          if (salesOrderState.listState == ScreenState.loaded || salesOrderState.orders.isNotEmpty) // 只有在加载完成或列表不为空时显示分页
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.arrow_back_ios_new),
-                    label: const Text("上一页"),
-                    onPressed: (salesOrderState.currentPageNo <= 1 || salesOrderState.listState == ScreenState.loading)
-                        ? null // 如果是第一页或正在加载，则禁用
-                        : () {
-                      salesOrderNotifier.goToPreviousPage();
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text(
-                      '第 ${salesOrderState.currentPageNo} 页'
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.arrow_forward_ios),
-                    label: const Text("下一页"),
-                    onPressed: (!salesOrderState.canLoadMore || salesOrderState.listState == ScreenState.loading)
-                        ? null // 如果不能加载更多或正在加载，则禁用
-                        : () {
-                      salesOrderNotifier.goToNextPage();
-                    },
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );

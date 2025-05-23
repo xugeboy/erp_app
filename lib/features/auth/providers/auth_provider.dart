@@ -50,11 +50,11 @@ final dioProvider = Provider<Dio>((ref) {
   dio.options.baseUrl = "https://erp.xiangletools.store:30443";
 
   // 添加日志拦截器 (可选, 用于调试)
-  dio.interceptors.add(LogInterceptor(
-    requestBody: true,
-    responseBody: true,
-    requestHeader: true,
-  ));
+  // dio.interceptors.add(LogInterceptor(
+  //   requestBody: true,
+  //   responseBody: true,
+  //   requestHeader: true,
+  // ));
 
   // 添加我们的认证拦截器
   final tokenStorage = ref.read(tokenStorageProvider); // 获取 TokenStorageService

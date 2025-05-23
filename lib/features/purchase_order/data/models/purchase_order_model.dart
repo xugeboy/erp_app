@@ -1,9 +1,9 @@
-// lib/features/sales_order/data/models/purchase_order_model.dart
+// lib/features/purchase_order/data/models/purchase_order_model.dart
 import '../../../../core/utils/logger.dart';
-import '../../domain/entities/sales_order_entity.dart';
+import '../../domain/entities/purchase_order_entity.dart';
 
-class SalesOrderModel extends SalesOrderEntity {
-  const SalesOrderModel({
+class PurchaseOrderModel extends PurchaseOrderEntity {
+  const PurchaseOrderModel({
     required super.id,
     required super.no,
     required super.status,
@@ -21,7 +21,7 @@ class SalesOrderModel extends SalesOrderEntity {
     super.creditPeriod,
   });
 
-  factory SalesOrderModel.fromJson(Map<String, dynamic> json) {
+  factory PurchaseOrderModel.fromJson(Map<String, dynamic> json) {
     // Safe parsing to double, return null if not parsable
     double? parseDouble(dynamic value) {
       if (value == null) return null;
@@ -56,7 +56,7 @@ class SalesOrderModel extends SalesOrderEntity {
       return null;
     }
 
-    return SalesOrderModel(
+    return PurchaseOrderModel(
       id: parseInt(json['id'])?? 0,
       no: json['no'] as String? ?? '',
       status: parseInt(json['status'])?? 0,

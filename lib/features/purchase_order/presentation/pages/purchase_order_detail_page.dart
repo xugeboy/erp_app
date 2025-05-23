@@ -1,39 +1,39 @@
-// lib/features/sales_order/presentation/pages/purchase_order_detail_page.dart
+// lib/features/purchase_order/presentation/pages/purchase_order_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../domain/entities/sales_order_entity.dart';
+import '../../domain/entities/purchase_order_entity.dart';
 import '../../../../core/utils/logger.dart';
-import '../../providers/sales_order_providers.dart';
-import '../../providers/sales_order_state.dart';
-import 'sales_order_approval_page.dart'; // For navigation
+import '../../providers/purchase_order_providers.dart';
+import '../../providers/purchase_order_state.dart';
+import 'purchase_order_approval_page.dart'; // For navigation
 
-class SalesOrderDetailPage extends ConsumerStatefulWidget {
+class PurchaseOrderDetailPage extends ConsumerStatefulWidget {
   final int orderId;
 
-  const SalesOrderDetailPage({
+  const PurchaseOrderDetailPage({
     super.key,
     required this.orderId,
   });
 
   @override
-  ConsumerState<SalesOrderDetailPage> createState() =>
-      _SalesOrderDetailPageState();
+  ConsumerState<PurchaseOrderDetailPage> createState() =>
+      _PurchaseOrderDetailPageState();
 }
 
-class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
+class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPage> {
   @override
   void initState() {
     super.initState();
     // Fetch order details when the page loads
     // and reset any previous approval messages.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      logger.d("SalesOrderDetailPage: Fetching details for order ID ${widget.orderId}");
+      logger.d("PurchaseOrderDetailPage: Fetching details for order ID ${widget.orderId}");
       ref
-          .read(salesOrderNotifierProvider.notifier)
+          .read(purchaseOrderNotifierProvider.notifier)
           .fetchOrderDetail(widget.orderId);
-      ref.read(salesOrderNotifierProvider.notifier).resetApprovalStatus();
+      ref.read(purchaseOrderNotifierProvider.notifier).resetApprovalStatus();
     });
   }
 
@@ -85,7 +85,7 @@ class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
 
   Color _getStatusColor(BuildContext context, int statusCode) {
     // Create a dummy entity just to use the statusString getter logic
-    final tempEntity = SalesOrderEntity(
+    final tempEntity = PurchaseOrderEntity(
         id: 0, no: '', status: statusCode, orderType: 0, shippingFee: 0,
         orderTime: DateTime.now(), leadTime: DateTime.now(), totalPrice: 0,
         depositPrice: 0, currency: 0, receiptPrice: 0, creditPeriod: 0);
@@ -104,9 +104,9 @@ class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final salesOrderState = ref.watch(salesOrderNotifierProvider);
-    final notifier = ref.read(salesOrderNotifierProvider.notifier);
-    final SalesOrderEntity? order = salesOrderState.selectedOrder;
+    final purchaseOrderState = ref.watch(purchaseOrderNotifierProvider);
+    final notifier = ref.read(purchaseOrderNotifierProvider.notifier);
+    final PurchaseOrderEntity? order = purchaseOrderState.selectedOrder;
     final theme = Theme.of(context);
 
     final String locale = Localizations.localeOf(context).toString();
@@ -115,9 +115,9 @@ class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
 
     Widget content;
 
-    if (salesOrderState.detailState == ScreenState.loading) {
+    if (purchaseOrderState.detailState == ScreenState.loading) {
       content = const Center(child: CircularProgressIndicator());
-    } else if (salesOrderState.detailState == ScreenState.error || order == null) {
+    } else if (purchaseOrderState.detailState == ScreenState.error || order == null) {
       content = Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -127,8 +127,8 @@ class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
               const Icon(Icons.error_outline, color: Colors.red, size: 48),
               const SizedBox(height: 16),
               Text(
-                  salesOrderState.detailErrorMessage.isNotEmpty
-                      ? '加载失败: ${salesOrderState.detailErrorMessage}'
+                  purchaseOrderState.detailErrorMessage.isNotEmpty
+                      ? '加载失败: ${purchaseOrderState.detailErrorMessage}'
                       : '未找到订单详情。',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16)),
@@ -189,7 +189,7 @@ class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
                 const Divider(height: 20, thickness: 1),
                 _buildDetailRow(context, '下单时间:', dateFormatter.format(order.orderTime), icon: Icons.calendar_today_outlined),
                 _buildDetailRow(context, '交货时间:', dateFormatter.format(order.leadTime), icon: Icons.schedule_outlined),
-                if (order.orderTypeString == "赊销") // "赊销" 是您在 SalesOrderEntity 中定义的 orderTypeString
+                if (order.orderTypeString == "赊销") // "赊销" 是您在 PurchaseOrderEntity 中定义的 orderTypeString
                   _buildDetailRow(context, '账期 (天):', order.creditPeriod.toString(), icon: Icons.timer_outlined),                const SizedBox(height: 10),
                 Text("其他信息", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const Divider(height: 20, thickness: 1),
@@ -212,7 +212,7 @@ class _SalesOrderDetailPageState extends ConsumerState<SalesOrderDetailPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => SalesOrderApprovalPage(orderId: order.id),
+                            builder: (_) => PurchaseOrderApprovalPage(orderId: order.id),
                           ),
                         );
                       },

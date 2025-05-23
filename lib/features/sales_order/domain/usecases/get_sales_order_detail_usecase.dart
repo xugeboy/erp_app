@@ -1,4 +1,4 @@
-// lib/features/sales_order/domain/usecases/get_sales_order_detail_usecase.dart
+// lib/features/sales_order/domain/usecases/get_purchase_order_detail_usecase.dart
 
 import '../entities/sales_order_entity.dart';
 import '../repositories/sales_order_repository.dart';

@@ -1,4 +1,4 @@
-// lib/features/sales_order/domain/usecases/update_sales_order_status_usecase.dart
+// lib/features/sales_order/domain/usecases/update_purchase_order_status_usecase.dart
 
 import '../repositories/sales_order_repository.dart';
 

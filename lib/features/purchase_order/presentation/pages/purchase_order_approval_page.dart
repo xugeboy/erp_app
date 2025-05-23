@@ -1,4 +1,4 @@
-// lib/features/sales_order/presentation/pages/purchase_order_approval_page.dart
+// lib/features/purchase_order/presentation/pages/purchase_order_approval_page.dart
 import 'dart:io'; // For File
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,12 +7,12 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
 // Assuming your providers are correctly imported
-import '../../domain/entities/sales_order_entity.dart';
+import '../../domain/entities/purchase_order_entity.dart';
 import '../../../../core/utils/logger.dart';
-// Corrected import path for sales_order_providers if it's directly in features/sales_order/providers
-import '../../providers/sales_order_providers.dart';
-import '../../providers/sales_order_state.dart';
-// Corrected import path for sales_order_state if it's directly in features/sales_order/providers
+// Corrected import path for purchase_order_providers if it's directly in features/purchase_order/providers
+import '../../providers/purchase_order_providers.dart';
+import '../../providers/purchase_order_state.dart';
+// Corrected import path for purchase_order_state if it's directly in features/purchase_order/providers
 // This should be '../notifiers/purchase_order_state.dart' if state is with notifier
 // Assuming dioProvider is from your auth setup if it's global
 import '../../../auth/providers/auth_provider.dart'; // Or your central dio provider location
@@ -20,22 +20,22 @@ import '../../../auth/providers/auth_provider.dart'; // Or your central dio prov
 
 enum ApprovalAction { approve, reject }
 
-class SalesOrderApprovalPage extends ConsumerStatefulWidget {
+class PurchaseOrderApprovalPage extends ConsumerStatefulWidget {
   // Changed orderId to int to match your provided code structure
   final int orderId;
 
-  const SalesOrderApprovalPage({
+  const PurchaseOrderApprovalPage({
     super.key,
     required this.orderId,
   });
 
   @override
-  ConsumerState<SalesOrderApprovalPage> createState() =>
-      _SalesOrderApprovalPageState();
+  ConsumerState<PurchaseOrderApprovalPage> createState() =>
+      _PurchaseOrderApprovalPageState();
 }
 
-class _SalesOrderApprovalPageState
-    extends ConsumerState<SalesOrderApprovalPage> {
+class _PurchaseOrderApprovalPageState
+    extends ConsumerState<PurchaseOrderApprovalPage> {
   final _formKeyInDialog = GlobalKey<FormState>();
   final _remarksController = TextEditingController();
 
@@ -51,11 +51,11 @@ class _SalesOrderApprovalPageState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Reset any previous approval messages
-      ref.read(salesOrderNotifierProvider.notifier).resetApprovalStatus();
+      ref.read(purchaseOrderNotifierProvider.notifier).resetApprovalStatus();
 
       // Attempt to load PDF if order details are already in the notifier's state
       // The main trigger will be the ref.listen below.
-      final initialOrder = ref.read(salesOrderNotifierProvider).selectedOrder;
+      final initialOrder = ref.read(purchaseOrderNotifierProvider).selectedOrder;
       if (initialOrder != null && initialOrder.id == widget.orderId) {
         logger.d("ApprovalPage: Initial order found in state. ID: ${initialOrder.id}. Attempting PDF load.");
         _fetchContractUrlAndDisplayPdf(initialOrder);
@@ -67,7 +67,7 @@ class _SalesOrderApprovalPageState
   }
 
   // This method remains largely the same, fetching PDF based on order.id
-  Future<void> _fetchContractUrlAndDisplayPdf(SalesOrderEntity order) async {
+  Future<void> _fetchContractUrlAndDisplayPdf(PurchaseOrderEntity order) async {
     final String pdfMetadataApiUrl =
         'https://erp.xiangletools.store:30443/admin-api/erp/sale-order/exportPdfApp?id=${order.id}';
 
@@ -171,9 +171,9 @@ class _SalesOrderApprovalPageState
     super.dispose();
   }
 
-  void _showApprovalDialog(BuildContext context, ApprovalAction action, SalesOrderEntity order) {
+  void _showApprovalDialog(BuildContext context, ApprovalAction action, PurchaseOrderEntity order) {
     _remarksController.clear();
-    final notifier = ref.read(salesOrderNotifierProvider.notifier);
+    final notifier = ref.read(purchaseOrderNotifierProvider.notifier);
 
     showDialog(
       context: context,
@@ -228,16 +228,16 @@ class _SalesOrderApprovalPageState
 
   @override
   Widget build(BuildContext context) {
-    final salesOrderState = ref.watch(salesOrderNotifierProvider);
+    final purchaseOrderState = ref.watch(purchaseOrderNotifierProvider);
     // Get the order that should have been selected by the previous page
-    final SalesOrderEntity? order =
-    (salesOrderState.selectedOrder?.id == widget.orderId)
-        ? salesOrderState.selectedOrder
+    final PurchaseOrderEntity? order =
+    (purchaseOrderState.selectedOrder?.id == widget.orderId)
+        ? purchaseOrderState.selectedOrder
         : null;
 
     // Listener for selectedOrder changes to trigger PDF load if not already done
-    ref.listen<SalesOrderEntity?>(
-      salesOrderNotifierProvider.select((s) => s.selectedOrder),
+    ref.listen<PurchaseOrderEntity?>(
+      purchaseOrderNotifierProvider.select((s) => s.selectedOrder),
           (previousOrder, newOrder) {
         if (newOrder != null && newOrder.id == widget.orderId) {
           // Check if PDF needs to be loaded
@@ -250,7 +250,7 @@ class _SalesOrderApprovalPageState
     );
 
     // Listener for approval state changes (for SnackBar and navigation)
-    ref.listen<SalesOrderState>(salesOrderNotifierProvider, (previous, next) {
+    ref.listen<PurchaseOrderState>(purchaseOrderNotifierProvider, (previous, next) {
       if (previous?.approvalState != next.approvalState) {
         if (next.approvalState == ScreenState.success) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -282,11 +282,11 @@ class _SalesOrderApprovalPageState
     if (order == null) {
       // If order details are not available (e.g., not set by previous page or doesn't match ID)
       // This state should ideally be brief if the listener picks up the correct selectedOrder.
-      // If salesOrderState.detailState reflects an error FOR THIS orderId from a previous attempt, show it.
-      if (salesOrderState.detailState == ScreenState.loading && salesOrderState.selectedOrder?.id != widget.orderId) {
+      // If purchaseOrderState.detailState reflects an error FOR THIS orderId from a previous attempt, show it.
+      if (purchaseOrderState.detailState == ScreenState.loading && purchaseOrderState.selectedOrder?.id != widget.orderId) {
         bodyContent = const Center(child: CircularProgressIndicator(semanticsLabel: '等待订单信息...'));
-      } else if (salesOrderState.detailState == ScreenState.error && salesOrderState.selectedOrder?.id != widget.orderId) {
-        bodyContent = Center(child: Text("加载订单信息时出错: ${salesOrderState.detailErrorMessage}"));
+      } else if (purchaseOrderState.detailState == ScreenState.error && purchaseOrderState.selectedOrder?.id != widget.orderId) {
+        bodyContent = Center(child: Text("加载订单信息时出错: ${purchaseOrderState.detailErrorMessage}"));
       }
       else {
         bodyContent = const Center(
@@ -348,7 +348,7 @@ class _SalesOrderApprovalPageState
     return Scaffold(
       appBar: AppBar(
         title: Text(order != null ? '审批订单: ${order.no}' : '订单审批'),
-        actions: order == null || salesOrderState.approvalState == ScreenState.submitting || _isPdfLoading
+        actions: order == null || purchaseOrderState.approvalState == ScreenState.submitting || _isPdfLoading
             ? []
             : <Widget>[
           TextButton(
