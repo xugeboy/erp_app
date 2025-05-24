@@ -1,4 +1,4 @@
-// lib/features/sales_order/domain/entities/purchase_order_entity.dart
+// lib/features/sales_order/domain/entities/production_entity.dart
 import 'package:equatable/equatable.dart';
 
 class SalesOrderEntity extends Equatable {

@@ -1,4 +1,4 @@
-// lib/features/purchase_order/presentation/pages/purchase_order_approval_page.dart
+// lib/features/purchase_order/presentation/pages/production_approval_page.dart
 import 'dart:io'; // For File
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +13,7 @@ import '../../../../core/utils/logger.dart';
 import '../../providers/purchase_order_providers.dart';
 import '../../providers/purchase_order_state.dart';
 // Corrected import path for purchase_order_state if it's directly in features/purchase_order/providers
-// This should be '../notifiers/purchase_order_state.dart' if state is with notifier
+// This should be '../notifiers/production_state.dart' if state is with notifier
 // Assuming dioProvider is from your auth setup if it's global
 import '../../../auth/providers/auth_provider.dart'; // Or your central dio provider location
 

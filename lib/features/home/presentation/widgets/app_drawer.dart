@@ -1,3 +1,4 @@
+import 'package:erp_app/features/production/presentation/pages/production_list_page.dart';
 import 'package:erp_app/features/purchase_order/presentation/pages/purchase_order_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,7 +114,10 @@ class AppDrawer extends ConsumerWidget {
                     onTap: () {
                       ref.read(selectedPageProvider.notifier).state = 'Production Orders';
                       Navigator.pop(context);
-                      // TODO: 执行导航到销售订单页面的逻辑
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProductionListPage()),
+                      );
                     },
                     theme: drawerTheme,
                   ),

@@ -1,4 +1,4 @@
-// lib/features/sales_order/presentation/notifiers/purchase_order_state.dart
+// lib/features/sales_order/presentation/notifiers/production_state.dart
 import 'package:equatable/equatable.dart';
 import '../domain/entities/sales_order_entity.dart';
 

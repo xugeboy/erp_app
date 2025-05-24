@@ -1,4 +1,4 @@
-// lib/features/purchase_order/presentation/pages/purchase_order_detail_page.dart
+// lib/features/purchase_order/presentation/pages/production_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';

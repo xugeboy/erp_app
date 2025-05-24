@@ -1,4 +1,4 @@
-// lib/features/sales_order/domain/entities/purchase_order_entity.dart
+// lib/features/sales_order/domain/entities/production_entity.dart
 import 'package:equatable/equatable.dart';
 
 class PurchaseOrderEntity extends Equatable {
@@ -80,7 +80,7 @@ class PurchaseOrderEntity extends Equatable {
       case 4:
         return "含税运，开专票，发货前付款"; // USD
       default:
-        return '未设置结算方式 ($settlement)';
+        return '未设置结算方式';
     }
   }
 }

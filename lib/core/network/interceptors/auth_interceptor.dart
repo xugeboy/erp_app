@@ -32,7 +32,7 @@ class SessionExpiredException implements Exception {
   String toString() => message;
 }
 
-class AuthInterceptor extends QueuedInterceptorsWrapper {
+class AuthInterceptor extends Interceptor {
   final TokenStorageService _tokenStorageService;
   final Dio _dio; // 仍然需要主 Dio 实例来重试请求
   final Dio _refreshDio; // 干净的 Dio 实例用于刷新
@@ -213,7 +213,9 @@ class AuthInterceptor extends QueuedInterceptorsWrapper {
       logger.d('AuthInterceptor: Calling refresh token API: $_refreshTokenUrl');
       final refreshResponse = await _refreshDio.post(
         _refreshTokenUrl,
-        data: {'refreshToken': refreshToken},
+        queryParameters: {
+          'refreshToken': refreshToken
+        },
       );
       logger.d('AuthInterceptor: Refresh API response: ${refreshResponse.data}');
 
