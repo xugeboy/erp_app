@@ -18,7 +18,7 @@ abstract class ProductionRemoteDataSource {
   Future<void> updateProductionStatus(
       int orderId, int newStatus);
 
-  Future<String> uploadShipmentImage({required int productionOrderId, required File imageFile});
+  Future<bool> uploadShipmentImage({required int productionOrderId, required List<File> imageFiles});
 
   Future getRelatedPurchaseOrders({required String productionNo});
 }

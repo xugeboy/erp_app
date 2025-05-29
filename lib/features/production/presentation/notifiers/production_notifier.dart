@@ -123,37 +123,65 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
   }
 
 // --- 新增：上传出货图逻辑 ---
-Future<bool> uploadShipmentImage(int productionOrderId, File imageFile) async {
-  if (_uploadShipmentImageUseCase == null) {
-    logger.e("UploadShipmentImageUseCase not provided to ProductionNotifier.");
-    state = state.copyWith(imageUploadState: ScreenState.error, imageUploadMessage: "内部错误: 图片上传服务未配置"); // 假设 ProductionState 有这些字段
-    return false;
-  }
-  state = state.copyWith(imageUploadState: ScreenState.submitting, imageUploadMessage: '');
-  logger.d("ProductionNotifier: Uploading shipment image for production order ID $productionOrderId");
+  Future<bool> uploadShipmentImages(int productionOrderId, List<File> imageFiles) async {
+    // 确保您的 UseCase 已经被正确初始化
+    // 假设您有一个用于批量上传的 UseCase 或在现有 UseCase 中有相应方法
+    // 例如: _uploadMultipleShipmentImagesUseCase 或 _uploadShipmentImageUseCase.uploadMultiple
+    if (_uploadShipmentImageUseCase == null) { // 您需要根据实际情况调整此处的UseCase检查
+      logger.e("UploadShipmentImageUseCase (for multiple images) not provided to ProductionNotifier.");
+      state = state.copyWith(imageUploadState: ScreenState.error, imageUploadMessage: "内部错误: 图片批量上传服务未配置");
+      return false;
+    }
 
-  try {
-    // UploadShipmentImageUseCase 可能返回图片的 URL 或确认信息
-    final String imageUrl = await _uploadShipmentImageUseCase(
-      productionOrderId: productionOrderId,
-      imageFile: imageFile,
-    );
+    if (imageFiles.isEmpty) {
+      logger.i("No images provided for batch upload.");
+      // 根据业务需求，空列表可能不应视为错误，或者可以设置一个特定的消息
+      state = state.copyWith(imageUploadState: ScreenState.error, imageUploadMessage: "没有选择任何图片进行上传。");
+      return true; // 或者 false，取决于您如何定义空列表上传的“成功”
+    }
 
-    state = state.copyWith(imageUploadState: ScreenState.success, imageUploadMessage: '图片上传成功！URL: $imageUrl');
-    return true;
-  } on DioException catch (e,s) {
-    logger.e("ProductionNotifier: DioException uploading image for $productionOrderId", error: e, stackTrace: s);
-    state = state.copyWith(
-        imageUploadState: ScreenState.error, imageUploadMessage: "图片上传网络错误: ${e.message}");
-    return false;
-  } catch (e,s) {
-    logger.e("ProductionNotifier: Exception uploading image for $productionOrderId", error: e, stackTrace: s);
-    state = state.copyWith(
-        imageUploadState: ScreenState.error,
-        imageUploadMessage: "图片上传意外错误: ${e.toString()}");
-    return false;
+    state = state.copyWith(imageUploadState: ScreenState.submitting, imageUploadMessage: '正在上传 ${imageFiles.length} 张图片...');
+    logger.d("ProductionNotifier: Uploading ${imageFiles.length} shipment images for production order ID $productionOrderId");
+
+    try {
+      final bool wasBatchSuccessful = await _uploadShipmentImageUseCase( // <--- UseCase现在直接返回 bool
+        productionOrderId: productionOrderId,
+        imageFiles: imageFiles,
+      );
+
+      if (wasBatchSuccessful) {
+        logger.i("ProductionNotifier: Batch image upload successful for production order $productionOrderId.");
+        // 更新Notifier状态以供UI使用
+        state = state.copyWith(
+          imageUploadState: ScreenState.success,
+          imageUploadMessage: '${imageFiles.length} 张图片上传成功!', // 可以提供一个通用成功消息
+        );
+        return true; // 操作成功，返回 true
+      } else {
+        logger.w("ProductionNotifier: Batch image upload failed for production order $productionOrderId.");
+        // 更新Notifier状态以供UI使用
+        // 如果UseCase不返回具体错误消息，您可能需要一个通用的失败消息
+        // 或者，UseCase可以在失败时抛出带有消息的特定异常，然后在catch块中处理这个消息
+        state = state.copyWith(
+          imageUploadState: ScreenState.error,
+          imageUploadMessage: '图片上传失败。', // 通用失败消息
+        );
+        return false; // 操作失败，返回 false
+      }
+
+    } on DioException catch (e,s) {
+      logger.e("ProductionNotifier: DioException during batch image upload for $productionOrderId", error: e, stackTrace: s);
+      state = state.copyWith(
+          imageUploadState: ScreenState.error, imageUploadMessage: "图片批量上传网络错误: ${e.message?.isNotEmpty == true ? e.message : e.toString()}");
+      return false;
+    } catch (e,s) {
+      logger.e("ProductionNotifier: Generic exception during batch image upload for $productionOrderId", error: e, stackTrace: s);
+      state = state.copyWith(
+          imageUploadState: ScreenState.error,
+          imageUploadMessage: "图片批量上传发生意外错误: ${e.toString()}");
+      return false;
+    }
   }
-}
 
 void resetImageUploadStatus() {
   state = state.copyWith(imageUploadState: ScreenState.initial, imageUploadMessage: '');

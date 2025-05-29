@@ -20,7 +20,7 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
   final String _updateProductionStatusBaseUrl =
       'https://erp.xiangletools.store:30443/admin-api/erp/production/update-status';
   final String _uploadImageUrl =
-      'https://erp.xiangletools.store:30443/admin-api/erp/production/update-status';
+      'https://erp.xiangletools.store:30443/admin-api/erp/production/update-shipment-pics';
   final String _getRelatedPurchaseOrdersBaseUrl =
       'https://erp.xiangletools.store:30443/admin-api/erp/production/contracts-page';
 
@@ -206,98 +206,6 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
   }
 
   @override
-  Future<String> uploadShipmentImage({
-    required int productionOrderId,
-    required File imageFile,
-  }) async {
-    logger.d(
-      "DataSource: Uploading shipment image for production order ID $productionOrderId. File: ${imageFile.path}",
-    );
-    try {
-      String fileName = path.basename(imageFile.path); // 使用 path 包获取文件名
-      FormData formData = FormData.fromMap({
-        "file": await MultipartFile.fromFile(
-          imageFile.path,
-          filename: fileName,
-        ),
-        "productionOrderId": productionOrderId.toString(), // 将ID作为表单字段传递
-        // 您可能还需要传递其他参数，例如 "imageType": "shipment"
-      });
-
-      final response = await dio.post(
-        _uploadImageUrl, // 确保这是正确的上传端点
-        data: formData,
-        options: Options(
-          headers: {
-            // Dio 会自动为 multipart/form-data 设置 Content-Type
-            // 但如果您的后端有特殊要求，可以在这里添加
-          },
-          // 如果上传需要较长时间，可以调整超时
-          // sendTimeout: Duration(seconds: 60),
-          // receiveTimeout: Duration(seconds: 60),
-        ),
-        onSendProgress: (int sent, int total) {
-          logger.d(
-            'Image upload progress: ${(sent / total * 100).toStringAsFixed(0)}%',
-          );
-        },
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // **重要：根据您的API响应调整如何提取图片URL**
-        // 假设API返回 {"data": {"imageUrl": "..."}} 或 {"imageUrl": "..."}
-        if (response.data is Map<String, dynamic>) {
-          final responseData = response.data as Map<String, dynamic>;
-          String? imageUrl;
-          if (responseData.containsKey('data') && responseData['data'] is Map) {
-            imageUrl = responseData['data']['imageUrl'] as String?;
-          } else if (responseData.containsKey('imageUrl')) {
-            imageUrl = responseData['imageUrl'] as String?;
-          }
-
-          if (imageUrl != null && imageUrl.isNotEmpty) {
-            logger.i("DataSource: Image uploaded successfully. URL: $imageUrl");
-            return imageUrl;
-          } else {
-            logger.w(
-              "DataSource: Image upload API response OK, but imageUrl not found or empty. Response: $responseData",
-            );
-            throw Exception("图片上传成功，但未返回有效的图片链接。");
-          }
-        } else {
-          logger.w(
-            "DataSource: Image upload API response OK, but format is not Map. Response: ${response.data}",
-          );
-          throw Exception("图片上传成功，但响应格式不正确。");
-        }
-      } else {
-        logger.e(
-          "DataSource: Image upload failed with status ${response.statusCode}. Response: ${response.data}",
-        );
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: "图片上传失败，状态码: ${response.statusCode}",
-        );
-      }
-    } on DioException catch (e) {
-      logger.e(
-        "DataSource: DioException during image upload for $productionOrderId",
-        error: e,
-        stackTrace: e.stackTrace,
-      );
-      rethrow;
-    } catch (e, s) {
-      logger.e(
-        "DataSource: Unexpected error during image upload for $productionOrderId",
-        error: e,
-        stackTrace: s,
-      );
-      throw Exception("图片上传时发生意外错误: ${e.toString()}");
-    }
-  }
-
-  @override
   Future<List<PurchaseOrderModel>> getRelatedPurchaseOrders({
     required String productionNo,
   }) async {
@@ -329,10 +237,14 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
         }
 
         if (listData != null) {
-          final List<PurchaseOrderModel> models = listData.map(
-                (data) =>
-                PurchaseOrderModel.fromJson(data as Map<String, dynamic>),
-          ).toList();
+          final List<PurchaseOrderModel> models =
+              listData
+                  .map(
+                    (data) => PurchaseOrderModel.fromJson(
+                      data as Map<String, dynamic>,
+                    ),
+                  )
+                  .toList();
           return models;
         } else {
           logger.w(
@@ -365,6 +277,98 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
         stackTrace: s,
       );
       throw Exception('Data source error in getProductions: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<bool> uploadShipmentImage({
+    required int productionOrderId,
+    required List<File> imageFiles,
+  }) async {
+    if (imageFiles.isEmpty) {
+      logger.i("DataSource: No image files provided for upload.");
+      return false; // Return empty list if no files to upload
+    }
+
+    logger.d(
+      "DataSource: Uploading ${imageFiles.length} shipment image(s) for production order ID $productionOrderId.",
+    );
+
+    try {
+      // Create a list of MultipartFile
+      List<MultipartFile> filesToUpload = [];
+      for (File imageFile in imageFiles) {
+        String fileName = path.basename(imageFile.path); // Using path package
+        filesToUpload.add(
+          await MultipartFile.fromFile(imageFile.path, filename: fileName),
+        );
+      }
+
+      // Construct FormData
+      // The key for files ("files" in this example) must match what your backend API expects for multiple files.
+      // Common conventions are "files", "files[]", or "file".
+      FormData formData = FormData.fromMap({
+        "files": filesToUpload, // Sending a list of MultipartFile
+        "productionOrderId":
+            productionOrderId
+                .toString(), // Ensure ID is string if backend expects that for form data
+      });
+
+      logger.d(
+        "DataSource: FormData created with ${filesToUpload.length} files for order $productionOrderId.",
+      );
+
+      final response = await dio.post(
+        _uploadImageUrl, // Ensure this endpoint is designed for batch/multiple file uploads
+        data: formData,
+        onSendProgress: (int sent, int total) {
+          if (total > 0) {
+            // Avoid division by zero if total is not yet known
+            logger.d(
+              'Batch image upload progress: ${(sent / total * 100).toStringAsFixed(0)}%',
+            );
+          }
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        logger.i(
+          "DataSource: Batch image upload API request successful (status ${response.statusCode}). Response data: ${response.data}",
+        );
+
+        if (response.data is Map<String, dynamic>) {
+          final responseMap = response.data as Map<String, dynamic>;
+          return responseMap['data'];
+        } else {
+          logger.w(
+            "DataSource: Batch image upload API response OK, but no valid image URLs found. Response: ${response.data}",
+          );
+          throw Exception("图片批量上传成功，但未返回有效的图片链接列表。");
+        }
+      } else {
+        logger.e(
+          "DataSource: Batch image upload failed with status ${response.statusCode}. Response: ${response.data}",
+        );
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          error: "图片批量上传失败，状态码: ${response.statusCode}",
+        );
+      }
+    } on DioException catch (e) {
+      logger.e(
+        "DataSource: DioException during batch image upload for order $productionOrderId. Error: ${e.message}",
+        error: e,
+        stackTrace: e.stackTrace,
+      );
+      rethrow; // Rethrow to be handled by the UseCase/Notifier
+    } catch (e, s) {
+      logger.e(
+        "DataSource: Unexpected error during batch image upload for order $productionOrderId",
+        error: e,
+        stackTrace: s,
+      );
+      throw Exception("图片批量上传时发生意外错误: ${e.toString()}");
     }
   }
 }

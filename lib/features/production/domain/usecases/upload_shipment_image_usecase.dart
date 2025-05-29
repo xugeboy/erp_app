@@ -7,13 +7,13 @@ class UploadShipmentImageUseCase {
 
   UploadShipmentImageUseCase(this.repository);
 
-  Future<String> call({ // 返回图片URL或相关ID
+  Future<bool> call({ // 返回图片URL或相关ID
     required int productionOrderId,
-    required File imageFile,
+    required List<File> imageFiles,
   }) async {
     return repository.uploadShipmentImage(
       productionOrderId: productionOrderId,
-      imageFile: imageFile,
+      imageFiles: imageFiles,
     );
   }
 }

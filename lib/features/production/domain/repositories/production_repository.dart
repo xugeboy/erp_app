@@ -20,9 +20,9 @@ abstract class ProductionRepository {
   Future<void> updateProductionStatus(int orderId, int newStatus);
 
   // 新增：上传出货图方法
-  Future<String> uploadShipmentImage({ // 返回图片URL或相关ID
+  Future<bool> uploadShipmentImage({ // 返回图片URL或相关ID
     required int productionOrderId,
-    required File imageFile,
+    required List<File> imageFiles,
   });
 
   Future<List<PurchaseOrderModel>> relatedPurchaseOrders({required String productionNo});

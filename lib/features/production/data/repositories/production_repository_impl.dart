@@ -3,9 +3,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart'; // Needed if you specifically catch DioException here
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
-import 'package:erp_app/features/purchase_order/domain/entities/purchase_order_entity.dart';
-import '../../../../core/utils/logger.dart'; // Your logger
-import '../../../purchase_order/data/models/paginated_orders_result.dart';
+import '../../../../core/utils/logger.dart';
 import '../../domain/entities/production_entity.dart';
 import '../../domain/repositories/production_repository.dart';
 import '../datasources/production_remote_data_source.dart';
@@ -82,15 +80,15 @@ class ProductionRepositoryImpl implements ProductionRepository {
   }
 
   @override
-  Future<String> uploadShipmentImage({
+  Future<bool> uploadShipmentImage({
     required int productionOrderId,
-    required File imageFile,
+    required List<File> imageFiles,
   }) async {
     // if (await networkInfo.isConnected) { // 如果使用网络检查
     try {
       return await remoteDataSource.uploadShipmentImage(
         productionOrderId: productionOrderId,
-        imageFile: imageFile,
+        imageFiles: imageFiles,
       );
     } on DioException { // 更具体地捕获DioException
       // 可以选择在这里将 DioException 映射为领域层的 Failure 对象
