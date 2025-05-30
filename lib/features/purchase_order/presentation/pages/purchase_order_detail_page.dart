@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../auth/providers/auth_provider.dart';
 import '../../domain/entities/purchase_order_entity.dart';
 import '../../../../core/utils/logger.dart';
 import '../../providers/purchase_order_providers.dart';
@@ -106,6 +107,16 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
     final purchaseOrderState = ref.watch(purchaseOrderNotifierProvider);
     final notifier = ref.read(purchaseOrderNotifierProvider.notifier);
     final PurchaseOrderEntity? order = purchaseOrderState.selectedOrder;
+    final loginState = ref.read(userProvider.notifier).state;
+    bool isAuditEnable = false;
+    if(loginState != null) {
+      loginState.roles.forEach((role) {
+          if(role.contains("采购主管")||role.contains("管理员")){
+            isAuditEnable = true;
+          }
+        }
+      );
+    }
     final theme = Theme.of(context);
 
     final String locale = Localizations.localeOf(context).toString();
@@ -189,7 +200,7 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
                 const Divider(height: 20, thickness: 1),
                 _buildDetailRow(context, '备注:', order.remark, icon: Icons.notes_outlined),
                 const SizedBox(height: 30),
-                if (order.statusString == "待初审"|| order.statusString == "待终审") // Check against the display string from your entity
+                if (isAuditEnable && (order.statusString == "待初审"|| order.statusString == "待终审")) // Check against the display string from your entity
                   Center(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.approval_outlined),

@@ -70,15 +70,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 _buildLogo(),
                 const SizedBox(height: 40),
 
-                Text(
-                  'Sign in to your account',
-                  textAlign: TextAlign.center,
-                  style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 32),
-
                 _buildTextField(
-                  label: 'Username',
+                  label: '账号',
                   controller: _usernameController,
                   enabled: loginState.status != LoginStatus.loading,
                   textInputAction: TextInputAction.next,
@@ -86,7 +79,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const SizedBox(height: 20),
 
                 _buildTextField(
-                  label: 'Password',
+                  label: '密码',
                   controller: _passwordController,
                   isPassword: true,
                   enabled: loginState.status != LoginStatus.loading,
@@ -181,7 +174,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           height: 24.0,
           width: 24.0,
           child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-          : const Text('Sign in'),
+          : const Text('登录'),
     );
   }
 }
