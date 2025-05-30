@@ -93,10 +93,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   textInputAction: TextInputAction.done,
                 ),
                 const SizedBox(height: 20),
-
-                _buildRememberForgotRow(context),
-                const SizedBox(height: 28),
-
                 _buildSignInButton(loginState, loginNotifier),
                 const SizedBox(height: 32),
 
@@ -149,47 +145,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               borderRadius: BorderRadius.circular(8.0), // Slightly rounded corners
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0), // Adjust padding
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRememberForgotRow(BuildContext context) {
-    
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox( // Constrain checkbox size and padding
-              width: 24,
-              height: 24,
-              child: Checkbox(
-                value: _rememberMe,
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _rememberMe = value;
-                    });
-                  }
-                },
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // Reduce tap target size
-                visualDensity: VisualDensity.compact, // Make it more compact
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text('Remember me', style: Theme.of(context).textTheme.bodyMedium),
-          ],
-        ),
-        TextButton(
-          onPressed: () {
-            logger.d('Forgot password tapped'); // Placeholder action
-          },
-          child: Text(
-              'Forgot password?',
-              style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.primary)
           ),
         ),
       ],

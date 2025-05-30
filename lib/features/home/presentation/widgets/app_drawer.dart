@@ -3,7 +3,7 @@ import 'package:erp_app/features/production/presentation/pages/production_list_p
 import 'package:erp_app/features/purchase_order/presentation/pages/purchase_order_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../../auth/providers/auth_provider.dart';
 import '../../../sales_order/presentation/pages/sales_order_list_page.dart';
 
 // StateProvider 来管理当前选中的页面名称 (或者你可以用索引、枚举等)
@@ -35,6 +35,7 @@ class AppDrawer extends ConsumerWidget {
 
     // 监听选中的页面
     final selectedPage = ref.watch(selectedPageProvider);
+    final loginState = ref.read(userProvider.notifier).state;
 
     return Theme(
       data: drawerTheme,
@@ -92,19 +93,21 @@ class AppDrawer extends ConsumerWidget {
                     theme: drawerTheme,
                   ),
                   // 添加 销售订单
-                  _buildDrawerItem(
-                    icon: Icons.point_of_sale_rounded, // 示例图标
-                    text: '销售订单', // Sales Orders
-                    isSelected: selectedPage == 'Sales Orders',
-                    onTap: () {
-                      ref.read(selectedPageProvider.notifier).state = 'Sales Orders';
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SalesOrderListPage()),
-                      );
-                    },
-                    theme: drawerTheme,
-                  ),
+                  if (loginState != null && loginState.deptId == 120) ...[
+                    _buildDrawerItem(
+                      icon: Icons.point_of_sale_rounded,
+                      text: '销售订单',
+                      isSelected: selectedPage == 'Sales Orders',
+                      onTap: () {
+                        ref.read(selectedPageProvider.notifier).state = 'Sales Orders';
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SalesOrderListPage()),
+                        );
+                      },
+                      theme: drawerTheme,
+                    ),
+                  ],
                   // 添加 生产单
                   _buildDrawerItem(
                     icon: Icons.production_quantity_limits, // 示例图标

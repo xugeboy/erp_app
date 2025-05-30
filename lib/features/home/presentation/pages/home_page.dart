@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/storage_provider.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/state/login_state.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../widgets/app_drawer.dart';
@@ -20,21 +21,31 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // 将 _signOut 方法移到这里
   Future<void> _signOut() async {
-    // 使用 this.context 和 this.ref (或者直接用 context 和 ref)
     final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
-      final tokenService = ref.read(tokenStorageProvider); // 使用 ref
+      // 1. 清除 token
+      final tokenService = ref.read(tokenStorageProvider);
       await tokenService.deleteTokens();
+      await tokenService.deleteUser(); // 确保也清除用户数据
 
-      if (!mounted) return; // 检查 mounted
+      if (!context.mounted) return;
 
-      ref.read(authStateProvider.notifier).setUnauthenticated(); // 使用 ref
+      // 2. 更新认证状态
+      ref.read(authStateProvider.notifier).setUnauthenticated();
+      ref.read(userProvider.notifier).state = null; // 清除用户状态
       logger.i("Auth state set to unauthenticated.");
 
+      // 3. 导航到登录页面，并清除所有其他页面
+      if (!context.mounted) return;
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+            (route) => false, // 移除所有其他页面
+      );
     } catch (e) {
-      if (!mounted) return; // 检查 mounted
+      logger.e("Sign out failed", error: e);
+      if (!context.mounted) return;
       scaffoldMessenger.showSnackBar(
         SnackBar(content: Text('登出失败: ${e.toString()}')),
       );

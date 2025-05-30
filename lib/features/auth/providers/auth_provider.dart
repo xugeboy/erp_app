@@ -49,21 +49,10 @@ final dioProvider = Provider<Dio>((ref) {
   // 添加 Base URL (如果所有 API 都有相同的前缀)
   dio.options.baseUrl = "https://erp.xiangletools.store:30443";
 
-  // 添加日志拦截器 (可选, 用于调试)
-  // dio.interceptors.add(LogInterceptor(
-  //   requestBody: true,
-  //   responseBody: true,
-  //   requestHeader: true,
-  // ));
 
   // 添加我们的认证拦截器
   final tokenStorage = ref.read(tokenStorageProvider); // 获取 TokenStorageService
   dio.interceptors.add(AuthInterceptor(tokenStorage, dio /*, refreshDio: ... */));
-
-  // 可以设置超时等其他 Dio 选项
-  // dio.options.connectTimeout = Duration(seconds: 5);
-  // dio.options.receiveTimeout = Duration(seconds: 3);
-
   return dio;
 });
 
