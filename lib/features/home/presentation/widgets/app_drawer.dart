@@ -1,3 +1,4 @@
+import 'package:erp_app/features/home/presentation/pages/home_page.dart';
 import 'package:erp_app/features/production/presentation/pages/production_list_page.dart';
 import 'package:erp_app/features/purchase_order/presentation/pages/purchase_order_list_page.dart';
 import 'package:flutter/material.dart';
@@ -83,7 +84,6 @@ class AppDrawer extends ConsumerWidget {
                     isSelected: selectedPage == 'Purchase Orders',
                     onTap: () {
                       ref.read(selectedPageProvider.notifier).state = 'Purchase Orders';
-                      Navigator.pop(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const PurchaseOrderListPage()),
@@ -98,7 +98,6 @@ class AppDrawer extends ConsumerWidget {
                     isSelected: selectedPage == 'Sales Orders',
                     onTap: () {
                       ref.read(selectedPageProvider.notifier).state = 'Sales Orders';
-                      Navigator.pop(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const SalesOrderListPage()),
@@ -113,7 +112,6 @@ class AppDrawer extends ConsumerWidget {
                     isSelected: selectedPage == 'Sales Orders',
                     onTap: () {
                       ref.read(selectedPageProvider.notifier).state = 'Production Orders';
-                      Navigator.pop(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const ProductionListPage()),

@@ -42,22 +42,20 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
         (status != state.currentStatusFilterCode);
 
     if (filtersChanged) {
-      pageNoToFetch = 1;
+      // If filters changed, we are fetching page 1, so update state accordingly
       state = state.copyWith(
-        listState: ScreenState.loading,
-        orders: [], // 清空订单
-        currentPageNo: 1,
-        canLoadMore: true,
-        listErrorMessage: '',
         currentOrderNumberQuery: queryToUse,
         currentStatusFilterCode: statusToUse,
-        clearStatusFilter: statusToUse == null,
+        clearStatusFilter: status == null, // Clear if new status is null
+        currentPageNo: 1, // Reset to page 1 on filter change
+        orders: [], // Clear old orders
+        canLoadMore: true, // Assume can load more with new filters
       );
-    } else {
-      // 翻页
-      state = state.copyWith(listState: ScreenState.loadingMore, listErrorMessage: '');
+      pageNoToFetch = 1; // Override to 1 if filters changed
     }
 
+
+    state = state.copyWith(listState: ScreenState.loading, listErrorMessage: '');
     logger.d(
         "ProductionNotifier: Fetching production orders. Page: $pageNoToFetch, Query: '$queryToUse', Status Code: $statusToUse");
     try {
@@ -84,6 +82,7 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
         orders: newOrders,
         currentPageNo: pageNoToFetch,
         canLoadMore: canActuallyLoadMore,
+        currentStatusFilterCode: statusToUse,
         listErrorMessage: '',
       );
     } on DioException catch (e, s) {
