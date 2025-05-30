@@ -1,5 +1,6 @@
 // lib/features/production_order/presentation/pages/production_detail_page.dart
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,28 +27,24 @@ class ProductionDetailPage extends ConsumerStatefulWidget {
 
 class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
   final ImagePicker _picker = ImagePicker();
-  // 修改: 用于存储多个已选图片文件
   List<File> _pickedImages = [];
+  List<File> _existedImages = [];
 
   @override
   void initState() {
     super.initState();
-    // 保持您原有的initState逻辑结构
     WidgetsBinding.instance.addPostFrameCallback((_) {
       logger.d(
           "ProductionDetailPage: Initializing for production order. Order ID: ${widget.orderId}");
       final notifier = ref.read(productionNotifierProvider.notifier);
       final productionState = ref.watch(productionNotifierProvider);
-      // 注意：以下行依赖于 productionState.selectedOrder 在此时已经被正确设置且不为null。
-      // 如果 selectedOrder 可能为null或者与 widget.orderId 不符，这里可能会抛出错误或获取错误数据。
-      // 您的原始代码使用了 ! ，表明您预期 selectedOrder 在这里是有效的。
       if (productionState.selectedOrder != null && productionState.selectedOrder!.id == widget.orderId) {
         notifier.fetchRelatedPurchaseOrders(productionState.selectedOrder!.no);
+
+        notifier.fetchShipmentImages(productionState.selectedOrder!.saleOrderId);
       } else {
         logger.w("ProductionDetailPage: selectedOrder is null or does not match widget.orderId (${widget.orderId}) in initState when trying to fetch related purchase orders. This might be an issue if related orders are expected immediately.");
-        // 如果您的逻辑是在详情加载后才获取关联订单，那么这里可能不需要特别处理。
-        // 或者，如果需要，可以在订单详情加载成功后触发关联订单的获取。
-        // ref.read(productionNotifierProvider.notifier).fetchProductionOrderDetails(widget.orderId); // 例如，如果需要先确保订单详情已加载
+        // ref.read(productionNotifierProvider.notifier).fetchProductionOrderDetails(widget.orderId);
       }
     });
   }
@@ -114,13 +111,6 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
       );
     }
 
-    // ---------------------------------------------------------------------------
-    // Notifier 修改点:
-    // 您需要在 ProductionNotifier 中实现或修改一个方法，使其接受图片列表进行批量上传。
-    // 例如: Future<bool> uploadShipmentImages(int orderId, List<File> files)
-    // 这个方法内部应该处理将多个文件发送到后端的逻辑 (可能是一次请求，也可能是并发的多次请求，取决于您的API设计)。
-    // 它也应该相应地更新Notifier内部的状态 (如 imageUploadState, imageUploadMessage) 来反映整个批量操作的结果。
-    // ---------------------------------------------------------------------------
     final bool allSuccess = await notifier.uploadShipmentImages(widget.orderId, imagesToUpload); // 假设的新方法
 
     if (mounted) {
@@ -144,9 +134,6 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
             duration: const Duration(seconds: 4),
           ),
         );
-        // 对于部分成功的情况，您可能需要更复杂的逻辑来从 _pickedImages 中移除已成功的图片，
-        // 这需要 Notifier 返回更详细的成功/失败信息。
-        // 为简单起见，如果批量操作不完全成功，这里不清除列表，让用户自行处理。
       }
     }
   }
@@ -225,7 +212,6 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
     String statusText = "状态 ${order.status}";
     try {
       statusText = order.statusString;
-      // statusColor = _getProductionStatusColor(order.status); // 您需要根据实际的 ProductionEntity 实现来获取颜色
     } catch (e) {/* fallback */}
 
     return Chip(
@@ -248,27 +234,13 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
     final theme = Theme.of(context);
     final DateFormat dateFormatter = DateFormat('yyyy/MM/dd');
 
-    // 监听图片上传状态以显示提示 (这是您原有的 ref.listen 逻辑，但现在上传在 _uploadAllPickedImages 中处理反馈)
-    // 如果您的 notifier.uploadShipmentImage 更新了 imageUploadState 和 imageUploadMessage，
-    // 这个监听器仍然可以对单张图片上传的最终状态做出反应（尽管 _uploadAllPickedImages 已提供即时反馈）。
-    // 对于批量操作，您可能需要一个不同的状态属性来监听。
     ref.listen<ScreenState>(
         productionNotifierProvider.select((s) => s.imageUploadState), // 监听单图上传的最终状态
             (previous, next) {
-          // 这个监听器现在更多的是对 notifier 内部状态变化的反应，
-          // 而不是作为批量上传的主要反馈机制。
           if (next == ScreenState.error && mounted) {
-            // 避免与 _uploadAllPickedImages 中的反馈重复过多，可选择性保留
-            // ScaffoldMessenger.of(context).removeCurrentSnackBar();
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   SnackBar(content: Text("Notifier: " + (productionState.imageUploadMessage.isNotEmpty ? productionState.imageUploadMessage : '图片上传失败')), backgroundColor: Colors.red),
-            // );
             logger.d("Notifier's imageUploadState changed to error: ${productionState.imageUploadMessage}");
           } else if (next == ScreenState.success && mounted) {
-            // ScaffoldMessenger.of(context).removeCurrentSnackBar();
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   SnackBar(content: Text("Notifier: " + (productionState.imageUploadMessage.isNotEmpty ? productionState.imageUploadMessage : '图片上传成功')), backgroundColor: Colors.green),
-            // );
+
             logger.d("Notifier's imageUploadState changed to success: ${productionState.imageUploadMessage}");
           }
         }
@@ -390,7 +362,14 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
                 ),
               ),
             ),
-          // 您原有的预览代码 (_pickedImage != null) 已被上面的 Wrap 和清除按钮替代
+
+          const Padding(
+            padding: EdgeInsets.only(top: 24.0, bottom: 8.0), // 增加与上方元素的间距
+            child: Divider(),
+          ),
+          Text("已上传出货图", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10), // 标题和图片网格之间的间距
+          _buildShipmentImagesSection(context, productionState), // 新的 Widget
 
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16.0),
@@ -412,6 +391,80 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
         padding: const EdgeInsets.all(16.0),
         child: mainContent,
       ),
+    );
+  }
+
+  Widget _buildShipmentImagesSection(BuildContext context, ProductionState productionState) {
+    if (productionState.shipmentImagesState == ScreenState.loading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()));
+    }
+    if (productionState.shipmentImagesState == ScreenState.error) {
+      return Center(
+          child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('加载已上传图片失败: ${productionState.shipmentImagesErrorMessage}'),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => ref.read(productionNotifierProvider.notifier).fetchShipmentImages(productionState.selectedOrder!.saleOrderId),
+                    child: const Text("重试"),
+                  )
+                ],
+              )
+          )
+      );
+    }
+    if (productionState.shipmentImages.isEmpty) {
+      return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text('暂无已上传的出货图片。')));
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(), // 因为在 SingleChildScrollView 内部
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3, // 每行显示3张图片
+        crossAxisSpacing: 8.0,
+        mainAxisSpacing: 8.0,
+        childAspectRatio: 1.0, // 使单元格为正方形
+      ),
+      itemCount: productionState.shipmentImages.length,
+      itemBuilder: (context, index) {
+        final imageBytes = productionState.shipmentImages[index];
+        return GestureDetector(
+          onTap: () {
+            // TODO: 实现点击图片放大预览功能 (例如使用 showDialog 和 InteractiveViewer)
+            showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                    child: InteractiveViewer( // 允许缩放和平移
+                        panEnabled: true,
+                        minScale: 0.5,
+                        maxScale: 4,
+                        child: Image.memory(imageBytes as Uint8List, fit: BoxFit.contain)
+                    )
+                )
+            );
+            logger.d("Tapped on shipment image $index");
+          },
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            elevation: 2.0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+            child: Image.memory(
+              imageBytes as Uint8List,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                    color: Colors.grey[200],
+                    child: const Center(child: Icon(Icons.broken_image, size: 40, color: Colors.grey))
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 

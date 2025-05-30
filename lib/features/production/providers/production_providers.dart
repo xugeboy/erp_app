@@ -1,5 +1,6 @@
 // lib/features/purchase_order/presentation/providers/production_providers.dart
 import 'package:dio/dio.dart';
+import 'package:erp_app/features/production/domain/usecases/get_shipment_images_usecase.dart';
 import 'package:erp_app/features/production/domain/usecases/upload_shipment_image_usecase.dart';
 import 'package:erp_app/features/production/providers/production_state.dart';
 import 'package:erp_app/features/purchase_order/providers/purchase_order_state.dart';
@@ -41,6 +42,12 @@ Provider<UploadShipmentImageUseCase>((ref) {
       ref.read(productionRepositoryProvider));
 });
 
+final getShipmentImagesUseCaseProvider =
+Provider<GetShipmentImagesUseCase>((ref) {
+  return GetShipmentImagesUseCase(
+      ref.read(productionRepositoryProvider));
+});
+
 final getRelatedPurchaseOrdersUseCaseProvider =
 Provider<GetRelatedPurchaseOrdersUseCase>((ref) {
   return GetRelatedPurchaseOrdersUseCase(
@@ -53,6 +60,7 @@ StateNotifierProvider<ProductionNotifier, ProductionState>((ref) {
   return ProductionNotifier(
     getProductionsUseCase: ref.read(getProductionsUseCaseProvider),
     uploadShipmentImageUseCase :ref.read(uploadShipmentImageUseCaseProvider),
+    getShipmentImagesUseCase :ref.read(getShipmentImagesUseCaseProvider),
     getRelatedPurchaseOrdersUseCase :ref.read(getRelatedPurchaseOrdersUseCaseProvider)
   );
 });

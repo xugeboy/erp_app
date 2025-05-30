@@ -1,9 +1,10 @@
 // lib/features/purchase_order/data/datasources/production_remote_data_source_impl.dart
 import 'dart:io';
+import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 
+import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
-import 'package:erp_app/features/purchase_order/domain/entities/purchase_order_entity.dart';
 import 'package:path/path.dart' as path;
 import '../../../../core/utils/logger.dart';
 import '../models/paginated_result.dart';
@@ -21,6 +22,8 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
       'https://erp.xiangletools.store:30443/admin-api/erp/production/update-status';
   final String _uploadImageUrl =
       'https://erp.xiangletools.store:30443/admin-api/erp/production/update-shipment-pics';
+  final String _getShipmentImagesZipUrl =
+      'https://erp.xiangletools.store:30443/admin-api/erp/production/get-shipment-pics';
   final String _getRelatedPurchaseOrdersBaseUrl =
       'https://erp.xiangletools.store:30443/admin-api/erp/production/contracts-page';
 
@@ -303,10 +306,6 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
           await MultipartFile.fromFile(imageFile.path, filename: fileName),
         );
       }
-
-      // Construct FormData
-      // The key for files ("files" in this example) must match what your backend API expects for multiple files.
-      // Common conventions are "files", "files[]", or "file".
       FormData formData = FormData.fromMap({
         "files": filesToUpload, // Sending a list of MultipartFile
         "productionOrderId":
@@ -369,6 +368,66 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
         stackTrace: s,
       );
       throw Exception("图片批量上传时发生意外错误: ${e.toString()}");
+    }
+  }
+
+  @override
+  Future<List<Uint8List>> getShipmentImagesZip(int saleOrderId) async {
+    final String url = '$_getShipmentImagesZipUrl?id=$saleOrderId'; // 假设API需要id参数
+    logger.d("DataSource: Downloading shipment images ZIP from $url");
+
+    try {
+      final response = await dio.get(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes, // 非常重要：告诉Dio期望接收字节流
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final List<int> zipBytes = response.data as List<int>;
+        logger.d("DataSource: ZIP file downloaded successfully, size: ${zipBytes.length} bytes.");
+
+        // 解压ZIP文件
+        final archive = ZipDecoder().decodeBytes(zipBytes);
+        final List<Uint8List> imageBytesList = [];
+
+        for (final file in archive) {
+          if (file.isFile) {
+            // 简单检查文件名后缀，确保是图片 (可以根据需要做得更严格)
+            final fileNameLower = file.name.toLowerCase();
+            if (fileNameLower.endsWith('.jpg') ||
+                fileNameLower.endsWith('.jpeg') ||
+                fileNameLower.endsWith('.png') ||
+                fileNameLower.endsWith('.gif') || // 如果也支持gif
+                fileNameLower.endsWith('.webp')) { // 如果也支持webp
+              imageBytesList.add(file.content as Uint8List);
+              logger.d("DataSource: Extracted image from ZIP: ${file.name}");
+            } else {
+              logger.w("DataSource: Skipped non-image file in ZIP: ${file.name}");
+            }
+          }
+        }
+        if (imageBytesList.isEmpty && archive.isNotEmpty) {
+          logger.w("DataSource: ZIP file was not empty but contained no recognized image files.");
+        } else if (imageBytesList.isEmpty && archive.isEmpty) {
+          logger.w("DataSource: ZIP file was empty or could not be decoded properly.");
+        }
+        return imageBytesList;
+      } else {
+        logger.e("DataSource: Failed to download ZIP file, status: ${response.statusCode}");
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          error: "下载出货图片ZIP失败，状态码: ${response.statusCode}",
+        );
+      }
+    } on DioException catch (e) {
+      logger.e("DataSource: DioException downloading/processing ZIP for $saleOrderId: ${e.message}", error: e, stackTrace: e.stackTrace);
+      rethrow;
+    } catch (e, s) {
+      logger.e("DataSource: Unexpected error downloading/processing ZIP for $saleOrderId", error: e, stackTrace: s);
+      throw Exception("处理出货图片ZIP时发生意外错误: ${e.toString()}");
     }
   }
 }

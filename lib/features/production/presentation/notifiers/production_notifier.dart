@@ -1,6 +1,8 @@
 // lib/features/production_order/presentation/notifiers/production_notifier.dart
 import 'dart:io'; // 用于 File 类型
+import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 import 'package:erp_app/features/production/domain/entities/production_entity.dart';
+import 'package:erp_app/features/production/domain/usecases/get_shipment_images_usecase.dart';
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -14,14 +16,17 @@ import '../../../../core/utils/logger.dart';
 class ProductionNotifier extends StateNotifier<ProductionState> {
   final GetProductionsUseCase _getProductionsUseCase;
   final UploadShipmentImageUseCase? _uploadShipmentImageUseCase;
+  final GetShipmentImagesUseCase? _getShipmentImagesUseCase;
   final GetRelatedPurchaseOrdersUseCase? _getRelatedPurchaseOrdersUseCase;
 
   ProductionNotifier({
     required GetProductionsUseCase getProductionsUseCase,
     UploadShipmentImageUseCase? uploadShipmentImageUseCase,
+    GetShipmentImagesUseCase? getShipmentImagesUseCase,
     GetRelatedPurchaseOrdersUseCase? getRelatedPurchaseOrdersUseCase,
   })  : _getProductionsUseCase = getProductionsUseCase,
         _uploadShipmentImageUseCase = uploadShipmentImageUseCase,
+        _getShipmentImagesUseCase = getShipmentImagesUseCase,
         _getRelatedPurchaseOrdersUseCase = getRelatedPurchaseOrdersUseCase,
         super(ProductionState.initial());
 
@@ -102,20 +107,20 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
     fetchOrders(orderNumber: state.currentOrderNumberQuery, status: statusCode, pageNoToFetch: 1);
   }
 
-  Future<void> goToNextPage() async { // 如果您使用上一页/下一页按钮
+  Future<void> goToNextPage() async {
     if (!state.canLoadMore || state.listState == ScreenState.loading) return;
     logger.d("ProductionNotifier: Going to next page. Current: ${state.currentPageNo}");
-    await fetchOrders( // 这里的 fetchOrders 应该替换列表，而不是追加
+    await fetchOrders(
         pageNoToFetch: state.currentPageNo + 1,
         orderNumber: state.currentOrderNumberQuery,
         status: state.currentStatusFilterCode,
     );
   }
 
-  Future<void> goToPreviousPage() async { // 如果您使用上一页/下一页按钮
+  Future<void> goToPreviousPage() async {
     if (state.currentPageNo <= 1 || state.listState == ScreenState.loading) return;
     logger.d("ProductionNotifier: Going to previous page. Current: ${state.currentPageNo}");
-    await fetchOrders( // 这里的 fetchOrders 应该替换列表
+    await fetchOrders(
         pageNoToFetch: state.currentPageNo - 1,
         orderNumber: state.currentOrderNumberQuery,
         status: state.currentStatusFilterCode,
@@ -124,10 +129,7 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
 
 // --- 新增：上传出货图逻辑 ---
   Future<bool> uploadShipmentImages(int productionOrderId, List<File> imageFiles) async {
-    // 确保您的 UseCase 已经被正确初始化
-    // 假设您有一个用于批量上传的 UseCase 或在现有 UseCase 中有相应方法
-    // 例如: _uploadMultipleShipmentImagesUseCase 或 _uploadShipmentImageUseCase.uploadMultiple
-    if (_uploadShipmentImageUseCase == null) { // 您需要根据实际情况调整此处的UseCase检查
+    if (_uploadShipmentImageUseCase == null) {
       logger.e("UploadShipmentImageUseCase (for multiple images) not provided to ProductionNotifier.");
       state = state.copyWith(imageUploadState: ScreenState.error, imageUploadMessage: "内部错误: 图片批量上传服务未配置");
       return false;
@@ -135,16 +137,15 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
 
     if (imageFiles.isEmpty) {
       logger.i("No images provided for batch upload.");
-      // 根据业务需求，空列表可能不应视为错误，或者可以设置一个特定的消息
       state = state.copyWith(imageUploadState: ScreenState.error, imageUploadMessage: "没有选择任何图片进行上传。");
-      return true; // 或者 false，取决于您如何定义空列表上传的“成功”
+      return true;
     }
 
     state = state.copyWith(imageUploadState: ScreenState.submitting, imageUploadMessage: '正在上传 ${imageFiles.length} 张图片...');
     logger.d("ProductionNotifier: Uploading ${imageFiles.length} shipment images for production order ID $productionOrderId");
 
     try {
-      final bool wasBatchSuccessful = await _uploadShipmentImageUseCase( // <--- UseCase现在直接返回 bool
+      final bool wasBatchSuccessful = await _uploadShipmentImageUseCase(
         productionOrderId: productionOrderId,
         imageFiles: imageFiles,
       );
@@ -154,17 +155,14 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
         // 更新Notifier状态以供UI使用
         state = state.copyWith(
           imageUploadState: ScreenState.success,
-          imageUploadMessage: '${imageFiles.length} 张图片上传成功!', // 可以提供一个通用成功消息
+          imageUploadMessage: '${imageFiles.length} 张图片上传成功!',
         );
         return true; // 操作成功，返回 true
       } else {
         logger.w("ProductionNotifier: Batch image upload failed for production order $productionOrderId.");
-        // 更新Notifier状态以供UI使用
-        // 如果UseCase不返回具体错误消息，您可能需要一个通用的失败消息
-        // 或者，UseCase可以在失败时抛出带有消息的特定异常，然后在catch块中处理这个消息
         state = state.copyWith(
           imageUploadState: ScreenState.error,
-          imageUploadMessage: '图片上传失败。', // 通用失败消息
+          imageUploadMessage: '图片上传失败。',
         );
         return false; // 操作失败，返回 false
       }
@@ -241,5 +239,49 @@ void resetImageUploadStatus() {
       relatedPurchaseOrdersState: ScreenState.initial,
       relatedPurchaseOrdersErrorMessage: '',
     );
+  }
+
+  Future<void> fetchShipmentImages(int saleOrderId) async {
+    if (_getShipmentImagesUseCase == null) {
+      logger.e("GetShipmentImagesUseCase not provided to ProductionNotifier.");
+      state = state.copyWith(
+          shipmentImagesState: ScreenState.error,
+          shipmentImagesErrorMessage: "内部错误: 图片服务未配置");
+      return;
+    }
+    state = state.copyWith(
+        shipmentImagesState: ScreenState.loading,
+        shipmentImages: [], // 清空旧图片
+        shipmentImagesErrorMessage: '');
+    logger.d(
+        "ProductionNotifier: Fetching shipment images for production order ID $saleOrderId");
+
+    try {
+      // 调用 UseCase 获取图片字节列表
+      final List<Uint8List> images =
+      await _getShipmentImagesUseCase(saleOrderId);
+
+      state = state.copyWith(
+        shipmentImagesState: ScreenState.loaded,
+        shipmentImages: images, // 更新状态中的图片列表
+        shipmentImagesErrorMessage: '', // 清除错误信息
+      );
+      logger.i(
+          "ProductionNotifier: Successfully fetched ${images.length} shipment images.");
+    } on DioException catch (e, s) {
+      logger.e("ProductionNotifier: DioException fetching shipment images for $saleOrderId", error: e, stackTrace: s);
+      String errorMessage = "网络错误: ${e.message}";
+      if (e.response?.data is Map && e.response?.data['message'] != null) {
+        errorMessage = e.response!.data['message'].toString();
+      }
+      state = state.copyWith(
+          shipmentImagesState: ScreenState.error,
+          shipmentImagesErrorMessage: errorMessage);
+    } catch (e, s) {
+      logger.e("ProductionNotifier: Exception fetching shipment images for $saleOrderId", error: e, stackTrace: s);
+      state = state.copyWith(
+          shipmentImagesState: ScreenState.error,
+          shipmentImagesErrorMessage: "获取出货图片失败: ${e.toString()}");
+    }
   }
 }

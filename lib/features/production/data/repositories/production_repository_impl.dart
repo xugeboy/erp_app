@@ -1,5 +1,6 @@
 // lib/features/purchase_order/data/repositories/production_repository_impl.dart
 import 'dart:io';
+import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 
 import 'package:dio/dio.dart'; // Needed if you specifically catch DioException here
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
@@ -117,6 +118,18 @@ class ProductionRepositoryImpl implements ProductionRepository {
       rethrow;
     } on Exception catch (e, s) {
       logger.e('Repository: Generic Exception during getRelatedPurchaseOrders', error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Uint8List>> getShipmentImagesZip(int saleOrderId) async {
+    try {
+      return await remoteDataSource.getShipmentImagesZip(saleOrderId);
+    } on DioException {
+      // 可以选择在这里将 DioException 映射为领域层的 Failure 对象
+      rethrow;
+    } on Exception {
       rethrow;
     }
   }

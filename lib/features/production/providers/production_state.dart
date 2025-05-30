@@ -1,4 +1,6 @@
 // lib/features/purchase_order/presentation/notifiers/production_state.dart
+import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
+
 import 'package:equatable/equatable.dart';
 import 'package:erp_app/features/purchase_order/domain/entities/purchase_order_entity.dart';
 import '../../sales_order/data/models/paginated_orders_result.dart';
@@ -35,6 +37,10 @@ class ProductionState extends Equatable {
   final ScreenState relatedPurchaseOrdersState;
   final String relatedPurchaseOrdersErrorMessage;
 
+  final List<Uint8List> shipmentImages; // 存储解压后的图片字节数据
+  final ScreenState shipmentImagesState;
+  final String shipmentImagesErrorMessage;
+
   const ProductionState({
     this.listState = ScreenState.initial,
     this.orders = const [],
@@ -55,6 +61,10 @@ class ProductionState extends Equatable {
     this.relatedPurchaseOrders = const [],
     this.relatedPurchaseOrdersState = ScreenState.initial,
     this.relatedPurchaseOrdersErrorMessage = '',
+
+    this.shipmentImages = const [], // 初始化
+    this.shipmentImagesState = ScreenState.initial, // 初始化
+    this.shipmentImagesErrorMessage = '', // 初始化
   });
 
   factory ProductionState.initial() {
@@ -83,6 +93,9 @@ class ProductionState extends Equatable {
     List<PurchaseOrderEntity>? relatedPurchaseOrders,
     ScreenState? relatedPurchaseOrdersState,
     String? relatedPurchaseOrdersErrorMessage,
+    List<Uint8List>? shipmentImages,
+    ScreenState? shipmentImagesState,
+    String? shipmentImagesErrorMessage,
   }) {
     return ProductionState(
       listState: listState ?? this.listState,
@@ -107,6 +120,9 @@ class ProductionState extends Equatable {
       relatedPurchaseOrders: relatedPurchaseOrders ?? this.relatedPurchaseOrders,
       relatedPurchaseOrdersState: relatedPurchaseOrdersState ?? this.relatedPurchaseOrdersState,
       relatedPurchaseOrdersErrorMessage: relatedPurchaseOrdersErrorMessage ?? this.relatedPurchaseOrdersErrorMessage,
+      shipmentImages: shipmentImages ?? this.shipmentImages,
+      shipmentImagesState: shipmentImagesState ?? this.shipmentImagesState,
+      shipmentImagesErrorMessage: shipmentImagesErrorMessage ?? this.shipmentImagesErrorMessage,
     );
   }
 
@@ -128,5 +144,8 @@ class ProductionState extends Equatable {
     relatedPurchaseOrders,
     relatedPurchaseOrdersState,
     relatedPurchaseOrdersErrorMessage,
+    shipmentImages,
+    shipmentImagesState,
+    shipmentImagesErrorMessage,
   ];
 }

@@ -1,9 +1,7 @@
 import 'dart:io';
+import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
-import 'package:erp_app/features/purchase_order/domain/entities/purchase_order_entity.dart';
-
-import '../../../purchase_order/data/models/paginated_orders_result.dart';
 import '../../data/models/paginated_result.dart';
 import '../entities/production_entity.dart';
 
@@ -24,6 +22,8 @@ abstract class ProductionRepository {
     required int productionOrderId,
     required List<File> imageFiles,
   });
+
+  Future<List<Uint8List>> getShipmentImagesZip( int saleOrderId);
 
   Future<List<PurchaseOrderModel>> relatedPurchaseOrders({required String productionNo});
 }
