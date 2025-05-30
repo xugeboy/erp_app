@@ -1,6 +1,5 @@
 // lib/features/production_order/presentation/pages/production_detail_page.dart
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,8 +26,7 @@ class ProductionDetailPage extends ConsumerStatefulWidget {
 
 class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
   final ImagePicker _picker = ImagePicker();
-  List<File> _pickedImages = [];
-  List<File> _existedImages = [];
+  final List<File> _pickedImages = [];
 
   @override
   void initState() {
@@ -92,7 +90,7 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
     }
   }
 
-  Future<void> _uploadAllPickedImages() async {
+  Future<void> _uploadAllPickedImages(int saleOrderId) async {
     if (_pickedImages.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,7 +109,7 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
       );
     }
 
-    final bool allSuccess = await notifier.uploadShipmentImages(widget.orderId, imagesToUpload); // 假设的新方法
+    final bool allSuccess = await notifier.uploadShipmentImages(saleOrderId, imagesToUpload); // 假设的新方法
 
     if (mounted) {
       ScaffoldMessenger.of(context).removeCurrentSnackBar(); // 移除"正在上传"的提示
@@ -123,8 +121,6 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
           _pickedImages.clear(); // 全部成功后清空
         });
       } else {
-        // Notifier 应该在 uploadShipmentImages 方法中设置一个合适的 imageUploadMessage 来解释失败原因
-        // (例如："部分图片上传失败" 或 "网络错误导致上传失败" 等)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(ref.read(productionNotifierProvider).imageUploadMessage.isNotEmpty
@@ -354,12 +350,9 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
                 icon: Icon(productionState.imageUploadState == ScreenState.submitting ? Icons.hourglass_empty : Icons.upload_file),
                 label: Text(productionState.imageUploadState == ScreenState.submitting ? '上传处理中...' : '上传已选图片 (${_pickedImages.length}张)'),
                 onPressed: (_pickedImages.isEmpty || productionState.imageUploadState == ScreenState.submitting)
-                    ? null // 如果没有图片或(单个)图片正在上传(由Notifier的imageUploadState控制)，则禁用
-                    : _uploadAllPickedImages, // 调用新的批量上传方法
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 12)
-                ),
+                    ? null
+                    : () { _uploadAllPickedImages(productionState.selectedOrder!.saleOrderId); }
+                  ,
               ),
             ),
 
@@ -442,7 +435,7 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
                         panEnabled: true,
                         minScale: 0.5,
                         maxScale: 4,
-                        child: Image.memory(imageBytes as Uint8List, fit: BoxFit.contain)
+                        child: Image.memory(imageBytes, fit: BoxFit.contain)
                     )
                 )
             );
@@ -453,7 +446,7 @@ class _ProductionDetailPageState extends ConsumerState<ProductionDetailPage> {
             elevation: 2.0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
             child: Image.memory(
-              imageBytes as Uint8List,
+              imageBytes,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(

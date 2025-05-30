@@ -1,7 +1,7 @@
 // lib/features/purchase_order/data/datasources/production_remote_data_source_impl.dart
 import 'dart:io';
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 
+import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
@@ -373,60 +373,112 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
 
   @override
   Future<List<Uint8List>> getShipmentImagesZip(int saleOrderId) async {
-    final String url = '$_getShipmentImagesZipUrl?id=$saleOrderId'; // 假设API需要id参数
-    logger.d("DataSource: Downloading shipment images ZIP from $url");
+    final String metaUrl = '$_getShipmentImagesZipUrl?saleOrderId=$saleOrderId';
+    logger.d("DataSource: Fetching direct ZIP URL from $metaUrl for production order $saleOrderId");
+
+    String directZipFileUrl;
 
     try {
+      final metaResponse = await dio.get(metaUrl);
+      if (metaResponse.data != null) {
+        // **重要: 根据您的API实际响应调整此处的JSON解析逻辑**
+
+        if(metaResponse.data['data'] == null){
+          logger.w("DataSource: No direct ZIP URL found for production order $saleOrderId");
+          return [];
+        } else {
+          directZipFileUrl = metaResponse.data['data'];
+        }
+
+        if (directZipFileUrl.isEmpty || (!Uri.tryParse(directZipFileUrl)!.hasAbsolutePath)) {
+          logger.e("DataSource: Invalid or empty direct ZIP URL received: $directZipFileUrl");
+          throw Exception("获取到的直接ZIP文件链接无效。");
+        }
+        logger.d("DataSource: Received direct ZIP URL: $directZipFileUrl");
+
+      } else {
+        logger.e("DataSource: Failed to get direct ZIP URL, status: ${metaResponse.statusCode}");
+        throw DioException(
+          requestOptions: metaResponse.requestOptions,
+          response: metaResponse,
+          error: "获取ZIP文件链接失败，状态码: ${metaResponse.statusCode}",
+        );
+      }
+    } on DioException catch (e) {
+      logger.e("DataSource: DioException while fetching direct ZIP URL for $saleOrderId: ${e.message}", error: e, stackTrace: e.stackTrace);
+      rethrow;
+    } catch (e, s) {
+      logger.e("DataSource: Unexpected error while fetching direct ZIP URL for $saleOrderId", error: e, stackTrace: s);
+      throw Exception("获取ZIP文件链接时发生意外错误: ${e.toString()}");
+    }
+
+    // **步骤 2: 使用获取到的 directZipFileUrl 下载并解压ZIP文件**
+    logger.d("DataSource: Downloading shipment images ZIP from direct URL: $directZipFileUrl");
+    try {
       final response = await dio.get(
-        url,
+        directZipFileUrl, // 使用从上一步获取的直接URL
         options: Options(
-          responseType: ResponseType.bytes, // 非常重要：告诉Dio期望接收字节流
+          responseType: ResponseType.bytes, // 期望接收字节流
         ),
       );
 
       if (response.statusCode == 200 && response.data != null) {
+        if (response.data is! List<int>) {
+          logger.e("DataSource: ZIP download response data is not List<int>. Type: ${response.data.runtimeType}");
+          throw Exception("下载的ZIP文件格式不正确。");
+        }
         final List<int> zipBytes = response.data as List<int>;
         logger.d("DataSource: ZIP file downloaded successfully, size: ${zipBytes.length} bytes.");
 
-        // 解压ZIP文件
-        final archive = ZipDecoder().decodeBytes(zipBytes);
+        if (zipBytes.isEmpty) {
+          logger.w("DataSource: Downloaded ZIP file is empty for production order $saleOrderId.");
+          return [];
+        }
+
+        final archive = ZipDecoder().decodeBytes(zipBytes, verify: true);
         final List<Uint8List> imageBytesList = [];
 
-        for (final file in archive) {
-          if (file.isFile) {
-            // 简单检查文件名后缀，确保是图片 (可以根据需要做得更严格)
-            final fileNameLower = file.name.toLowerCase();
+        if (archive.isEmpty && zipBytes.isNotEmpty) {
+          logger.w("DataSource: ZIP file was not empty but ZipDecoder returned empty archive. Possible corrupted ZIP for production order $saleOrderId.");
+          throw Exception("无法解析下载的ZIP文件，可能已损坏或格式不正确。");
+        }
+
+        for (final fileInArchive in archive) {
+          if (fileInArchive.isFile) {
+            final fileNameLower = fileInArchive.name.toLowerCase();
             if (fileNameLower.endsWith('.jpg') ||
                 fileNameLower.endsWith('.jpeg') ||
                 fileNameLower.endsWith('.png') ||
-                fileNameLower.endsWith('.gif') || // 如果也支持gif
-                fileNameLower.endsWith('.webp')) { // 如果也支持webp
-              imageBytesList.add(file.content as Uint8List);
-              logger.d("DataSource: Extracted image from ZIP: ${file.name}");
+                fileNameLower.endsWith('.gif') ||
+                fileNameLower.endsWith('.webp')) {
+              imageBytesList.add(Uint8List.fromList(fileInArchive.content as List<int>));
+              logger.d("DataSource: Extracted image from ZIP: ${fileInArchive.name}");
             } else {
-              logger.w("DataSource: Skipped non-image file in ZIP: ${file.name}");
+              logger.w("DataSource: Skipped non-image file in ZIP: ${fileInArchive.name}");
             }
           }
         }
         if (imageBytesList.isEmpty && archive.isNotEmpty) {
           logger.w("DataSource: ZIP file was not empty but contained no recognized image files.");
-        } else if (imageBytesList.isEmpty && archive.isEmpty) {
-          logger.w("DataSource: ZIP file was empty or could not be decoded properly.");
         }
         return imageBytesList;
       } else {
-        logger.e("DataSource: Failed to download ZIP file, status: ${response.statusCode}");
+        logger.e("DataSource: Failed to download ZIP file from direct URL, status: ${response.statusCode}");
         throw DioException(
           requestOptions: response.requestOptions,
           response: response,
-          error: "下载出货图片ZIP失败，状态码: ${response.statusCode}",
+          error: "下载出货图片ZIP失败 (直接链接)，状态码: ${response.statusCode}",
         );
       }
     } on DioException catch (e) {
-      logger.e("DataSource: DioException downloading/processing ZIP for $saleOrderId: ${e.message}", error: e, stackTrace: e.stackTrace);
+      logger.e("DataSource: DioException downloading/processing ZIP from direct URL for $saleOrderId: ${e.message}", error: e, stackTrace: e.stackTrace);
       rethrow;
-    } catch (e, s) {
-      logger.e("DataSource: Unexpected error downloading/processing ZIP for $saleOrderId", error: e, stackTrace: s);
+    } on ArchiveException catch (e,s) {
+      logger.e("DataSource: ArchiveException (ZIP decoding) for $saleOrderId: ${e.message}", error: e, stackTrace: s);
+      throw Exception("解压出货图片ZIP文件失败: ${e.message}");
+    }
+    catch (e, s) {
+      logger.e("DataSource: Unexpected error downloading/processing ZIP from direct URL for $saleOrderId", error: e, stackTrace: s);
       throw Exception("处理出货图片ZIP时发生意外错误: ${e.toString()}");
     }
   }

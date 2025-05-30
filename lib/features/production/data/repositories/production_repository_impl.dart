@@ -1,7 +1,7 @@
 // lib/features/purchase_order/data/repositories/production_repository_impl.dart
 import 'dart:io';
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 
+import 'dart:typed_data';
 import 'package:dio/dio.dart'; // Needed if you specifically catch DioException here
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
 import '../../../../core/utils/logger.dart';

@@ -1,6 +1,6 @@
 // lib/features/production_order/presentation/notifiers/production_notifier.dart
 import 'dart:io'; // 用于 File 类型
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
+import 'dart:typed_data';
 import 'package:erp_app/features/production/domain/entities/production_entity.dart';
 import 'package:erp_app/features/production/domain/usecases/get_shipment_images_usecase.dart';
 import 'package:erp_app/features/purchase_order/data/models/purchase_order_model.dart';
@@ -128,7 +128,7 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
   }
 
 // --- 新增：上传出货图逻辑 ---
-  Future<bool> uploadShipmentImages(int productionOrderId, List<File> imageFiles) async {
+  Future<bool> uploadShipmentImages(int saleOrderId, List<File> imageFiles) async {
     if (_uploadShipmentImageUseCase == null) {
       logger.e("UploadShipmentImageUseCase (for multiple images) not provided to ProductionNotifier.");
       state = state.copyWith(imageUploadState: ScreenState.error, imageUploadMessage: "内部错误: 图片批量上传服务未配置");
@@ -142,16 +142,17 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
     }
 
     state = state.copyWith(imageUploadState: ScreenState.submitting, imageUploadMessage: '正在上传 ${imageFiles.length} 张图片...');
-    logger.d("ProductionNotifier: Uploading ${imageFiles.length} shipment images for production order ID $productionOrderId");
+    logger.d("ProductionNotifier: Uploading ${imageFiles.length} shipment images for production order ID $saleOrderId");
 
     try {
       final bool wasBatchSuccessful = await _uploadShipmentImageUseCase(
-        productionOrderId: productionOrderId,
+        productionOrderId: saleOrderId,
         imageFiles: imageFiles,
       );
 
       if (wasBatchSuccessful) {
-        logger.i("ProductionNotifier: Batch image upload successful for production order $productionOrderId.");
+        await fetchShipmentImages(saleOrderId); // 刷新出货图列表
+        logger.i("ProductionNotifier: Batch image upload successful for production order $saleOrderId.");
         // 更新Notifier状态以供UI使用
         state = state.copyWith(
           imageUploadState: ScreenState.success,
@@ -159,7 +160,7 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
         );
         return true; // 操作成功，返回 true
       } else {
-        logger.w("ProductionNotifier: Batch image upload failed for production order $productionOrderId.");
+        logger.w("ProductionNotifier: Batch image upload failed for production order $saleOrderId.");
         state = state.copyWith(
           imageUploadState: ScreenState.error,
           imageUploadMessage: '图片上传失败。',
@@ -168,12 +169,12 @@ class ProductionNotifier extends StateNotifier<ProductionState> {
       }
 
     } on DioException catch (e,s) {
-      logger.e("ProductionNotifier: DioException during batch image upload for $productionOrderId", error: e, stackTrace: s);
+      logger.e("ProductionNotifier: DioException during batch image upload for $saleOrderId", error: e, stackTrace: s);
       state = state.copyWith(
           imageUploadState: ScreenState.error, imageUploadMessage: "图片批量上传网络错误: ${e.message?.isNotEmpty == true ? e.message : e.toString()}");
       return false;
     } catch (e,s) {
-      logger.e("ProductionNotifier: Generic exception during batch image upload for $productionOrderId", error: e, stackTrace: s);
+      logger.e("ProductionNotifier: Generic exception during batch image upload for $saleOrderId", error: e, stackTrace: s);
       state = state.copyWith(
           imageUploadState: ScreenState.error,
           imageUploadMessage: "图片批量上传发生意外错误: ${e.toString()}");
@@ -258,8 +259,7 @@ void resetImageUploadStatus() {
 
     try {
       // 调用 UseCase 获取图片字节列表
-      final List<Uint8List> images =
-      await _getShipmentImagesUseCase(saleOrderId);
+      final List<Uint8List> images = await _getShipmentImagesUseCase(saleOrderId);
 
       state = state.copyWith(
         shipmentImagesState: ScreenState.loaded,

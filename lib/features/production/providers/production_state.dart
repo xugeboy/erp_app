@@ -1,9 +1,8 @@
 // lib/features/purchase_order/presentation/notifiers/production_state.dart
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
+import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:erp_app/features/purchase_order/domain/entities/purchase_order_entity.dart';
-import '../../sales_order/data/models/paginated_orders_result.dart';
 import '../domain/entities/production_entity.dart';
 
 enum ScreenState { initial, loading, loaded, error, submitting, success, loadingMore } // Added loadingMore

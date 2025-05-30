@@ -1,6 +1,6 @@
 // lib/features/production_order/domain/usecases/get_shipment_images_usecase.dart
 import '../repositories/production_repository.dart';
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
+import 'dart:typed_data';
 
 class GetShipmentImagesUseCase {
   final ProductionRepository repository;

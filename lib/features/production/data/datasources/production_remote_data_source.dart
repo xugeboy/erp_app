@@ -1,7 +1,7 @@
 // lib/features/purchase_order/data/datasources/production_remote_data_source.dart
 import 'dart:io';
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
 
+import 'dart:typed_data';
 import 'package:erp_app/features/production/data/models/paginated_result.dart';
 
 import '../models/production_model.dart';
