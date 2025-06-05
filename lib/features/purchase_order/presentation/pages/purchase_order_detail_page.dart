@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
 
 import '../../../auth/providers/auth_provider.dart';
 import '../../domain/entities/purchase_order_entity.dart';
@@ -101,6 +104,91 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
     return Colors.grey.shade600;
   }
 
+  Future<void> _downloadContract(BuildContext context, WidgetRef ref, int orderId) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final dio = ref.read(dioProvider);
+    
+    try {
+      // 1. 获取PDF URL
+      final String pdfMetadataApiUrl = 'https://erp.xiangleratchetstrap.com/admin-api/erp/purchase-order/export-contract-pdf-app?id=$orderId';
+      logger.d("Fetching PDF URL from: $pdfMetadataApiUrl");
+      
+      final metaResponse = await dio.get(pdfMetadataApiUrl);
+      String? directPdfUrl;
+      
+      if (metaResponse.statusCode == 200 && metaResponse.data != null) {
+        if (metaResponse.data is Map<String, dynamic>) {
+          final responseData = metaResponse.data as Map<String, dynamic>;
+          if (responseData.containsKey('data') && responseData['data'] is String) {
+            directPdfUrl = responseData['data'] as String?;
+          } else if (responseData.containsKey('data') && responseData['data'] is Map) {
+            directPdfUrl = responseData['data']?['url'] as String? ?? responseData['data']?['pdfUrl'] as String?;
+          } else if (responseData.containsKey('url')) {
+            directPdfUrl = responseData['url'] as String?;
+          } else if (responseData.containsKey('pdfUrl')) {
+            directPdfUrl = responseData['pdfUrl'] as String?;
+          }
+        } else if (metaResponse.data is String) {
+          directPdfUrl = metaResponse.data as String;
+        }
+      }
+
+      if (directPdfUrl == null || directPdfUrl.isEmpty) {
+        throw Exception("无法获取PDF下载链接");
+      }
+
+      // 2. 获取下载目录
+      final directory = await getExternalStorageDirectory();
+      if (directory == null) {
+        throw Exception("无法访问下载目录");
+      }
+
+      // 3. 创建下载目录（如果不存在）
+      final downloadDir = Directory('${directory.path}/Download');
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
+      }
+
+      // 4. 生成文件名
+      final fileName = '采购合同_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final filePath = '${downloadDir.path}/$fileName';
+
+      // 5. 下载文件
+      logger.d("Downloading PDF to: $filePath");
+      await dio.download(
+        directPdfUrl,
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = (received / total * 100).toStringAsFixed(0);
+            scaffoldMessenger.showSnackBar(
+              SnackBar(content: Text('下载进度: $progress%')),
+            );
+          }
+        },
+      );
+
+      // 6. 下载完成提示
+      if (context.mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('合同已下载到: $filePath'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      logger.e("Download contract failed", error: e);
+      if (context.mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('下载失败: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +309,21 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
                           ),
                         );
                       },
+                    ),
+                  ),
+                if (order.statusString == "已审核")
+                  Center(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.download_rounded),
+                      label: const Text('下载合同'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 30, vertical: 12),
+                        textStyle: const TextStyle(fontSize: 16),
+                      ),
+                      onPressed: () => _downloadContract(context, ref, order.id),
                     ),
                   ),
               ],

@@ -47,7 +47,7 @@ final dioProvider = Provider<Dio>((ref) {
   final dio = Dio();
 
   // 添加 Base URL (如果所有 API 都有相同的前缀)
-  dio.options.baseUrl = "https://erp.xiangletools.store:30443";
+  dio.options.baseUrl = "https://erp.xiangleratchetstrap.com";
 
 
   // 添加我们的认证拦截器

@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>需要访问文档文件夹以保存下载的合同文件</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>需要访问下载文件夹以保存下载的合同文件</string>
 </dict>
 </plist>
