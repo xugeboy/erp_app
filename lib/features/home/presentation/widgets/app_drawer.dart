@@ -93,7 +93,7 @@ class AppDrawer extends ConsumerWidget {
                     theme: drawerTheme,
                   ),
                   // 添加 销售订单
-                  if (loginState != null && loginState.deptId == 120) ...[
+                  if (loginState != null && loginState.deptId == 1) ...[
                     _buildDrawerItem(
                       icon: Icons.point_of_sale_rounded,
                       text: '销售订单',
