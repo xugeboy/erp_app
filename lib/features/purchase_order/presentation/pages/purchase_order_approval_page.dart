@@ -82,51 +82,11 @@ class _PurchaseOrderApprovalPageState
 
     try {
       final dio = ref.read(dioProvider);
-      final metaResponse = await dio.get(pdfMetadataApiUrl);
-
-      String? directPdfUrl;
-      if (metaResponse.statusCode == 200 && metaResponse.data != null) {
-        logger.d("PDF Metadata API Response Data: ${metaResponse.data}");
-        if (metaResponse.data is Map<String, dynamic>) {
-          final responseData = metaResponse.data as Map<String, dynamic>;
-          // CRITICAL: Adjust this to your actual API response structure
-          if (responseData.containsKey('data') && responseData['data'] is String) {
-            directPdfUrl = responseData['data'] as String?;
-          } else if (responseData.containsKey('data') && responseData['data'] is Map) {
-            directPdfUrl = responseData['data']?['url'] as String? ?? responseData['data']?['pdfUrl'] as String?;
-          }
-          else if (responseData.containsKey('url')) {
-            directPdfUrl = responseData['url'] as String?;
-          }
-          else if (responseData.containsKey('pdfUrl')) {
-            directPdfUrl = responseData['pdfUrl'] as String?;
-          }
-          // ... other potential structures
-        } else if (metaResponse.data is String) {
-          directPdfUrl = metaResponse.data as String;
-        }
-
-        if (directPdfUrl == null || directPdfUrl.isEmpty || (!Uri.tryParse(directPdfUrl)!.hasAbsolutePath)) {
-          logger.e("Failed to parse a valid PDF URL from metadata API response. Received URL: $directPdfUrl. Full response: ${metaResponse.data}");
-          throw Exception("从API获取的PDF链接无效或为空。 ($directPdfUrl)");
-        }
-        logger.d("ApprovalPage: Received direct PDF URL: $directPdfUrl");
-      } else {
-        logger.e("PDF Metadata API request failed with status ${metaResponse.statusCode}, data: ${metaResponse.data}");
-        throw DioException(
-            requestOptions: metaResponse.requestOptions,
-            response: metaResponse,
-            error: "获取PDF链接API返回状态 ${metaResponse.statusCode}",
-            message: "无法从API获取PDF链接。");
-      }
-
-      logger.d("ApprovalPage: Downloading PDF from direct URL: $directPdfUrl");
       final dir = await getTemporaryDirectory();
-      final fileName = directPdfUrl.split('/').last.split('?').first;
-      final safeFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9.\-_]'), '_') + (fileName.toLowerCase().endsWith('.pdf') ? '' : '.pdf');
-      final localPath = '${dir.path}/$safeFileName';
+      final fileName = "采购合同";
+      final localPath = '${dir.path}/$fileName';
 
-      await dio.download(directPdfUrl, localPath);
+      await dio.download(pdfMetadataApiUrl, localPath);
 
       if (mounted) {
         setState(() {

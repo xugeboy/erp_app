@@ -112,67 +112,17 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
       // 1. 获取PDF URL
       final String pdfMetadataApiUrl = 'https://erp.xiangleratchetstrap.com/admin-api/erp/purchase-order/export-contract-pdf-app?id=$orderId';
       logger.d("Fetching PDF URL from: $pdfMetadataApiUrl");
-      
-      final metaResponse = await dio.get(pdfMetadataApiUrl);
-      String? directPdfUrl;
-      
-      if (metaResponse.statusCode == 200 && metaResponse.data != null) {
-        if (metaResponse.data is Map<String, dynamic>) {
-          final responseData = metaResponse.data as Map<String, dynamic>;
-          if (responseData.containsKey('data') && responseData['data'] is String) {
-            directPdfUrl = responseData['data'] as String?;
-          } else if (responseData.containsKey('data') && responseData['data'] is Map) {
-            directPdfUrl = responseData['data']?['url'] as String? ?? responseData['data']?['pdfUrl'] as String?;
-          } else if (responseData.containsKey('url')) {
-            directPdfUrl = responseData['url'] as String?;
-          } else if (responseData.containsKey('pdfUrl')) {
-            directPdfUrl = responseData['pdfUrl'] as String?;
-          }
-        } else if (metaResponse.data is String) {
-          directPdfUrl = metaResponse.data as String;
-        }
-      }
 
-      if (directPdfUrl == null || directPdfUrl.isEmpty) {
-        throw Exception("无法获取PDF下载链接");
-      }
-
-      // 2. 获取下载目录
-      final directory = await getExternalStorageDirectory();
-      if (directory == null) {
-        throw Exception("无法访问下载目录");
-      }
-
-      // 3. 创建下载目录（如果不存在）
-      final downloadDir = Directory('${directory.path}/Download');
-      if (!await downloadDir.exists()) {
-        await downloadDir.create(recursive: true);
-      }
-
-      // 4. 生成文件名
+      final dir = await getTemporaryDirectory();
       final fileName = '采购合同_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final filePath = '${downloadDir.path}/$fileName';
+      final localPath = '${dir.path}/$fileName';
 
-      // 5. 下载文件
-      logger.d("Downloading PDF to: $filePath");
-      await dio.download(
-        directPdfUrl,
-        filePath,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            final progress = (received / total * 100).toStringAsFixed(0);
-            scaffoldMessenger.showSnackBar(
-              SnackBar(content: Text('下载进度: $progress%')),
-            );
-          }
-        },
-      );
-
+      await dio.download(pdfMetadataApiUrl, localPath);
       // 6. 下载完成提示
       if (context.mounted) {
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text('合同已下载到: $filePath'),
+            content: Text('合同已下载'),
             backgroundColor: Colors.green,
           ),
         );
