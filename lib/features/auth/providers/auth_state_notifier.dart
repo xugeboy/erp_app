@@ -28,6 +28,9 @@ class AuthStateNotifier extends StateNotifier<AuthStatus> {
         // 使用存储的 User 更新 userProvider
         ref.read(userProvider.notifier).state = storedUser; // <--- 更新 User Provider
         state = AuthStatus.authenticated;
+        
+        // 启动token管理
+        ref.read(tokenManagementControllerProvider).startTokenManagement();
       } else {
         logger.i("Auth Check: No valid token or user data found. Setting state to unauthenticated.");
         // 如果缺少任何一个，都视为未认证，并确保清除所有相关数据
@@ -35,6 +38,9 @@ class AuthStateNotifier extends StateNotifier<AuthStatus> {
         await _tokenStorageService.deleteUser(); // 清除可能残留的 user data
         ref.read(userProvider.notifier).state = null; // 确保 userProvider 为 null
         state = AuthStatus.unauthenticated;
+        
+        // 停止token管理
+        ref.read(tokenManagementControllerProvider).stopTokenManagement();
       }
     } catch (e, stackTrace) {
       logger.e("Auth Check: Error checking stored auth state", error: e, stackTrace: stackTrace);
@@ -43,6 +49,9 @@ class AuthStateNotifier extends StateNotifier<AuthStatus> {
       await _tokenStorageService.deleteUser();
       ref.read(userProvider.notifier).state = null;
       state = AuthStatus.unauthenticated;
+      
+      // 停止token管理
+      ref.read(tokenManagementControllerProvider).stopTokenManagement();
     }
   }
 
@@ -52,6 +61,9 @@ class AuthStateNotifier extends StateNotifier<AuthStatus> {
       logger.i("Auth State: Setting to authenticated.");
       // 这里不再需要更新 userProvider，LoginNotifier 会做
       state = AuthStatus.authenticated;
+      
+      // 启动token管理
+      ref.read(tokenManagementControllerProvider).startTokenManagement();
     }
   }
 
@@ -65,11 +77,17 @@ class AuthStateNotifier extends StateNotifier<AuthStatus> {
       _tokenStorageService.deleteUser(); // <--- 确保清除 User
       ref.read(userProvider.notifier).state = null;
       state = AuthStatus.unauthenticated;
+      
+      // 停止token管理
+      ref.read(tokenManagementControllerProvider).stopTokenManagement();
     } else {
       // 如果已经是 unauthenticated，再次确保清除
       _tokenStorageService.deleteTokens();
       _tokenStorageService.deleteUser();
       ref.read(userProvider.notifier).state = null;
+      
+      // 停止token管理
+      ref.read(tokenManagementControllerProvider).stopTokenManagement();
     }
   }
 }

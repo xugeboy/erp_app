@@ -1,6 +1,7 @@
 // lib/core/network/interceptors/auth_interceptor.dart (修改)
 import 'dart:async'; // 需要 Completer
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../features/auth/data/models/login_response.dart';
 import '../../storage/token_storage_service.dart';
 import '../../utils/logger.dart'; // 确保导入路径正确
@@ -20,8 +21,6 @@ class BusinessLevelAuthException implements Exception {
   String toString() => message;
 }
 
-
-
 // 自定义异常 (保持不变)
 class SessionExpiredException implements Exception {
   final String message;
@@ -37,6 +36,7 @@ class AuthInterceptor extends Interceptor {
   final Dio _dio; // 仍然需要主 Dio 实例来重试请求
   final Dio _refreshDio; // 干净的 Dio 实例用于刷新
   final String _refreshTokenUrl;
+  final Function()? _onSessionExpired; // 新增：会话过期回调
 
   final String businessErrorCodeField = 'code'; // 例如: 'code'
   final dynamic businessAuthErrorCodeValue = 401; // 例如: 401 (int) 或 "401" (String)
@@ -48,9 +48,10 @@ class AuthInterceptor extends Interceptor {
     this._tokenStorageService,
     this._dio, {
     Dio? refreshDio,
+    Function()? onSessionExpired, // 新增：会话过期回调参数
   }) : _refreshDio = refreshDio ?? Dio(),
-       _refreshTokenUrl =
-           '${_dio.options.baseUrl}/admin-api/system/auth/refresh-token';
+       _refreshTokenUrl = '${_dio.options.baseUrl}/admin-api/system/auth/refresh-token',
+       _onSessionExpired = onSessionExpired;
 
   // --- onRequest ---
   @override
@@ -73,6 +74,18 @@ class AuthInterceptor extends Interceptor {
         await _refreshCompleter?.future;
         logger.d("AuthInterceptor: Refresh completed, proceeding with request.");
       }
+      
+      // 检查token是否已过期
+      final isExpired = await _tokenStorageService.isTokenExpired();
+      if (isExpired) {
+        logger.w("AuthInterceptor: Token expired before request. Triggering session expired.");
+        _handleSessionExpired();
+        return handler.reject(DioException(
+          requestOptions: options,
+          error: SessionExpiredException('Token expired before request'),
+        ));
+      }
+      
       final String? accessToken = await _tokenStorageService.getAccessToken();
       logger.d(
         "AuthInterceptor: Retrieved token: ${accessToken != null ? 'found' : 'not found'}",
@@ -84,6 +97,11 @@ class AuthInterceptor extends Interceptor {
         logger.d(
           "AuthInterceptor: Warning - Request needs auth but no token found.",
         );
+        _handleSessionExpired();
+        return handler.reject(DioException(
+          requestOptions: options,
+          error: SessionExpiredException('No access token found'),
+        ));
       }
     } else {
       logger.d("AuthInterceptor: Request path excluded from auth.");
@@ -146,7 +164,7 @@ class AuthInterceptor extends Interceptor {
 
     // 现在 onError 主要处理网络错误、服务器错误（非200的业务错误）、
     // 或者由 onResponse 中 token 刷新失败后 reject 出来的错误。
-    // 对于 HTTP 401，如果你的后端“总是”返回200并在body里给业务错误码，那么下面这个if分支可能永远不会因为HTTP 401被触发。
+    // 对于 HTTP 401，如果你的后端"总是"返回200并在body里给业务错误码，那么下面这个if分支可能永远不会因为HTTP 401被触发。
     // 但保留它以处理真正的网络层401（例如，如果网关层面返回401）仍然是好的。
     bool isActualHttp401 = err.response?.statusCode == 401;
     bool isNotRefreshTokenPath = !err.requestOptions.path.endsWith('/refresh-token');
@@ -159,13 +177,30 @@ class AuthInterceptor extends Interceptor {
     } else if (err.error is SessionExpiredException) {
       // 如果是刷新失败导致的 SessionExpiredException，通常意味着无法恢复，直接传递错误
       logger.w("AuthInterceptor: SessionExpiredException caught in onError. User should be logged out. Path: ${err.requestOptions.path}");
-      // 这里可以添加全局登出逻辑的触发，例如通过 Riverpod 修改认证状态
-      // ref.read(authStateProvider.notifier).logout(); // 假设你有这样的notifier
+      _handleSessionExpired();
     }
 
     // 对于其他类型的错误，或者刷新token接口本身的错误，直接传递
     logger.d("AuthInterceptor: onError - Error not requiring auth refresh or is for refresh-token path itself. Passing error along.");
     return super.onError(err, handler);
+  }
+
+  // 新增：处理会话过期
+  void _handleSessionExpired() {
+    logger.w("AuthInterceptor: Handling session expired");
+    try {
+      // 清除所有认证数据
+      _tokenStorageService.clearAllAuthData();
+      
+      // 调用回调函数通知上层
+      if (_onSessionExpired != null) {
+        _onSessionExpired!();
+      }
+      
+      logger.i("AuthInterceptor: Session expired handled successfully");
+    } catch (e) {
+      logger.e("AuthInterceptor: Error handling session expired", error: e);
+    }
   }
 
   // 核心的Token刷新和请求重试逻辑
@@ -210,6 +245,17 @@ class AuthInterceptor extends Interceptor {
         throw DioException(requestOptions: requestOptions, error: error, response: originalError.response);
       }
 
+      // 检查refresh token是否已过期
+      final isRefreshTokenExpired = await _tokenStorageService.isRefreshTokenExpired();
+      if (isRefreshTokenExpired) {
+        logger.w('AuthInterceptor: Refresh token expired. Session expired.');
+        await _tokenStorageService.deleteTokens();
+        final error = SessionExpiredException('Refresh token expired.');
+        _isRefreshing = false;
+        _refreshCompleter!.completeError(error);
+        throw DioException(requestOptions: requestOptions, error: error, response: originalError.response);
+      }
+
       logger.d('AuthInterceptor: Calling refresh token API: $_refreshTokenUrl');
       final refreshResponse = await _refreshDio.post(
         _refreshTokenUrl,
@@ -224,11 +270,19 @@ class AuthInterceptor extends Interceptor {
         if (loginResponse.code == 0 && loginResponse.data != null) {
           final newData = loginResponse.data!;
           logger.i('AuthInterceptor: Token refresh successful.');
+          
+          // 计算新的过期时间（假设token有效期为2小时，refresh token为7天）
+          final now = DateTime.now();
+          final accessTokenExpiry = now.add(const Duration(hours: 2));
+          final refreshTokenExpiry = now.add(const Duration(days: 7));
+          
           await _tokenStorageService.saveTokens(
             accessToken: newData.accessToken,
             refreshToken: newData.refreshToken.isNotEmpty ? newData.refreshToken : refreshToken,
+            accessTokenExpiry: accessTokenExpiry,
+            refreshTokenExpiry: refreshTokenExpiry,
           );
-          logger.d('AuthInterceptor: New tokens saved.');
+          logger.d('AuthInterceptor: New tokens saved with expiry times.');
           _isRefreshing = false;
           _refreshCompleter!.complete();
 

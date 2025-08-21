@@ -10,21 +10,33 @@ class TokenStorageService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
+  static const String _tokenExpiryKey = 'token_expiry'; // 新增：token过期时间
+  static const String _refreshTokenExpiryKey = 'refresh_token_expiry'; // 新增：refresh token过期时间
 
   TokenStorageService(this._storage);
 
-  // 保存 Tokens
+  // 保存 Tokens (增强版，包含过期时间)
   Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
+    DateTime? accessTokenExpiry, // 新增：access token过期时间
+    DateTime? refreshTokenExpiry, // 新增：refresh token过期时间
   }) async {
     try {
       await _storage.write(key: _accessTokenKey, value: accessToken);
       await _storage.write(key: _refreshTokenKey, value: refreshToken);
-      logger.d("Tokens saved successfully."); // 调试信息
+      
+      // 保存过期时间
+      if (accessTokenExpiry != null) {
+        await _storage.write(key: _tokenExpiryKey, value: accessTokenExpiry.millisecondsSinceEpoch.toString());
+      }
+      if (refreshTokenExpiry != null) {
+        await _storage.write(key: _refreshTokenExpiryKey, value: refreshTokenExpiry.millisecondsSinceEpoch.toString());
+      }
+      
+      logger.d("Tokens and expiry times saved successfully.");
     } catch (e) {
       logger.d("Error saving tokens: $e");
-      // 可以考虑向上抛出异常或进行错误日志记录
     }
   }
 
@@ -42,8 +54,73 @@ class TokenStorageService {
   Future<String?> getRefreshToken() async {
     try {
       return await _storage.read(key: _refreshTokenKey);
-    } catch (e) {
+      } catch (e) {
       logger.d("Error reading refresh token: $e");
+      return null;
+    }
+  }
+
+  // 新增：检查token是否即将过期（默认提前5分钟）
+  Future<bool> isTokenExpiringSoon({Duration threshold = const Duration(minutes: 5)}) async {
+    try {
+      final expiryStr = await _storage.read(key: _tokenExpiryKey);
+      if (expiryStr == null) return true; // 如果没有过期时间，认为需要刷新
+      
+      final expiryTime = DateTime.fromMillisecondsSinceEpoch(int.parse(expiryStr));
+      final now = DateTime.now();
+      final timeUntilExpiry = expiryTime.difference(now);
+      
+      return timeUntilExpiry <= threshold;
+    } catch (e) {
+      logger.d("Error checking token expiry: $e");
+      return true; // 出错时认为需要刷新
+    }
+  }
+
+  // 新增：检查token是否已过期
+  Future<bool> isTokenExpired() async {
+    try {
+      final expiryStr = await _storage.read(key: _tokenExpiryKey);
+      if (expiryStr == null) return true;
+      
+      final expiryTime = DateTime.fromMillisecondsSinceEpoch(int.parse(expiryStr));
+      final now = DateTime.now();
+      
+      return now.isAfter(expiryTime);
+    } catch (e) {
+      logger.d("Error checking if token expired: $e");
+      return true;
+    }
+  }
+
+  // 新增：检查refresh token是否已过期
+  Future<bool> isRefreshTokenExpired() async {
+    try {
+      final expiryStr = await _storage.read(key: _refreshTokenExpiryKey);
+      if (expiryStr == null) return true;
+      
+      final expiryTime = DateTime.fromMillisecondsSinceEpoch(int.parse(expiryStr));
+      final now = DateTime.now();
+      
+      return now.isAfter(expiryTime);
+    } catch (e) {
+      logger.d("Error checking if refresh token expired: $e");
+      return true;
+    }
+  }
+
+  // 新增：获取token剩余有效时间
+  Future<Duration?> getTokenRemainingTime() async {
+    try {
+      final expiryStr = await _storage.read(key: _tokenExpiryKey);
+      if (expiryStr == null) return null;
+      
+      final expiryTime = DateTime.fromMillisecondsSinceEpoch(int.parse(expiryStr));
+      final now = DateTime.now();
+      
+      return expiryTime.difference(now);
+    } catch (e) {
+      logger.d("Error getting token remaining time: $e");
       return null;
     }
   }
@@ -53,7 +130,9 @@ class TokenStorageService {
     try {
       await _storage.delete(key: _accessTokenKey);
       await _storage.delete(key: _refreshTokenKey);
-      logger.d("Tokens deleted successfully.");
+      await _storage.delete(key: _tokenExpiryKey);
+      await _storage.delete(key: _refreshTokenExpiryKey);
+      logger.d("Tokens and expiry times deleted successfully.");
     } catch (e) {
       logger.d("Error deleting tokens: $e");
     }
@@ -97,6 +176,17 @@ class TokenStorageService {
       logger.i("User data deleted successfully.");
     } catch (e, stackTrace) {
       logger.e("Error deleting user data", error: e, stackTrace: stackTrace);
+    }
+  }
+
+  // 新增：清理所有认证相关数据
+  Future<void> clearAllAuthData() async {
+    try {
+      await deleteTokens();
+      await deleteUser();
+      logger.i("All authentication data cleared successfully.");
+    } catch (e, stackTrace) {
+      logger.e("Error clearing all auth data", error: e, stackTrace: stackTrace);
     }
   }
 }

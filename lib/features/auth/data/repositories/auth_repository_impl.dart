@@ -40,13 +40,19 @@ class AuthRepositoryImpl implements AuthRepository {
         loginData = loginResponse.data!;
         logger.i("Repository: Login successful. Got tokens.");
 
-        // --- Step 2: 立刻保存 Token ---
-        // 必须先保存 Token，后续的 Profile 请求才能通过拦截器认证
+        // --- Step 2: 立刻保存 Token 和过期时间 ---
+        // 计算token过期时间
+        final now = DateTime.now();
+        final accessTokenExpiry = now.add(Duration(seconds: loginData.expiresTime));
+        final refreshTokenExpiry = now.add(const Duration(days: 7)); // 假设refresh token有效7天
+        
         await _tokenStorageService.saveTokens(
           accessToken: loginData.accessToken,
           refreshToken: loginData.refreshToken,
+          accessTokenExpiry: accessTokenExpiry,
+          refreshTokenExpiry: refreshTokenExpiry,
         );
-        logger.i("Repository: Tokens saved securely.");
+        logger.i("Repository: Tokens and expiry times saved securely. Access token expires at: $accessTokenExpiry");
 
         // --- Step 3: 获取用户 Profile 信息 ---
         logger.d("Repository: Fetching user profile...");
@@ -116,8 +122,7 @@ class AuthRepositoryImpl implements AuthRepository {
       logger.d("Error during backend logout, proceeding with local logout: $e");
     } finally {
       // 2. 无论后端是否成功，都必须清除本地 Token
-      await _tokenStorageService.deleteTokens();
-      await _tokenStorageService.deleteUser();
+      await _tokenStorageService.clearAllAuthData();
     }
   }
 
