@@ -168,6 +168,14 @@ class AuthInterceptor extends Interceptor {
     // 但保留它以处理真正的网络层401（例如，如果网关层面返回401）仍然是好的。
     bool isActualHttp401 = err.response?.statusCode == 401;
     bool isNotRefreshTokenPath = !err.requestOptions.path.endsWith('/refresh-token');
+    final bool isRefreshPath = err.requestOptions.path.endsWith('/refresh-token');
+
+    // 如果是刷新接口本身报错，无论错误类型，都视为会话不可恢复，强制登出
+    if (isRefreshPath) {
+      logger.w('AuthInterceptor: Refresh-token request failed. Forcing logout. Path: ${err.requestOptions.path}');
+      _handleSessionExpired();
+      return super.onError(err, handler);
+    }
 
     if (isActualHttp401 && isNotRefreshTokenPath) {
       logger.w('AuthInterceptor: Actual HTTP 401 error (not business code in 200). Path: ${err.requestOptions.path}. Attempting refresh.');
@@ -239,6 +247,7 @@ class AuthInterceptor extends Interceptor {
       if (refreshToken == null || refreshToken.isEmpty) {
         logger.w('AuthInterceptor: No refresh token found. Session expired.');
         await _tokenStorageService.deleteTokens();
+        _handleSessionExpired();
         final error = SessionExpiredException('No refresh token available.');
         _isRefreshing = false;
         _refreshCompleter!.completeError(error);
@@ -250,6 +259,7 @@ class AuthInterceptor extends Interceptor {
       if (isRefreshTokenExpired) {
         logger.w('AuthInterceptor: Refresh token expired. Session expired.');
         await _tokenStorageService.deleteTokens();
+        _handleSessionExpired();
         final error = SessionExpiredException('Refresh token expired.');
         _isRefreshing = false;
         _refreshCompleter!.completeError(error);
@@ -292,6 +302,7 @@ class AuthInterceptor extends Interceptor {
         } else {
           logger.w('AuthInterceptor: Refresh API business error. Code=${loginResponse.code}, Msg=${loginResponse.msg}. Deleting tokens.');
           await _tokenStorageService.deleteTokens();
+          _handleSessionExpired();
           final error = SessionExpiredException('Refresh token invalid/expired. API Msg: ${loginResponse.msg}');
           _isRefreshing = false;
           _refreshCompleter!.completeError(error);
@@ -300,6 +311,7 @@ class AuthInterceptor extends Interceptor {
       } else {
         logger.w('AuthInterceptor: Invalid refresh API response format. Deleting tokens.');
         await _tokenStorageService.deleteTokens();
+        _handleSessionExpired();
         final error = SessionExpiredException('Invalid response format from refresh API.');
         _isRefreshing = false;
         _refreshCompleter!.completeError(error);
@@ -308,6 +320,7 @@ class AuthInterceptor extends Interceptor {
     } catch (e) {
       logger.e('AuthInterceptor: Exception during token refresh flow: $e. Deleting tokens.');
       await _tokenStorageService.deleteTokens();
+      _handleSessionExpired();
       final error = SessionExpiredException('Failed to refresh token: $e');
       _isRefreshing = false;
       if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
