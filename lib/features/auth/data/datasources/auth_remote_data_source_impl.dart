@@ -6,9 +6,9 @@ import 'auth_remote_data_source.dart';
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final Dio dio;
-  final String loginUrl = 'https://erp.xiangleratchetstrap.com/admin-api/system/auth/login';
-  final String logoutUrl = 'https://erp.xiangleratchetstrap.com/admin-api/system/auth/logout';
-  final String profileUrl = 'https://erp.xiangleratchetstrap.com/admin-api/system/user/profile/get';
+  final String loginUrl = 'http://192.168.0.158:48080/admin-api/system/auth/login';
+  final String logoutUrl = 'http://192.168.0.158:48080/admin-api/system/auth/logout';
+  final String profileUrl = 'http://192.168.0.158:48080/admin-api/system/user/profile/get';
 
   AuthRemoteDataSourceImpl(this.dio);
 

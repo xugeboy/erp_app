@@ -10,11 +10,11 @@ class SalesOrderRemoteDataSourceImpl implements SalesOrderRemoteDataSource {
   final Dio dio;
 
   final String _getSalesOrdersUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/sale-order/page';
+      'http://192.168.0.158:48080/admin-api/erp/sale-order/page';
   final String _getSalesOrderDetailBaseUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/sale-order/get';
+      'http://192.168.0.158:48080/admin-api/erp/sale-order/get';
   final String _updateSalesOrderStatusBaseUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/sale-order/update-status';
+      'http://192.168.0.158:48080/admin-api/erp/sale-order/update-status';
 
   SalesOrderRemoteDataSourceImpl(this.dio);
 

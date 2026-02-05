@@ -110,7 +110,7 @@ class _PurchaseOrderDetailPageState extends ConsumerState<PurchaseOrderDetailPag
     
     try {
       // 1. 获取PDF URL
-      final String pdfMetadataApiUrl = 'https://erp.xiangleratchetstrap.com/admin-api/erp/purchase-order/export-contract-pdf-app?id=$orderId';
+      final String pdfMetadataApiUrl = 'http://192.168.0.158:48080/admin-api/erp/purchase-order/export-contract-pdf-app?id=$orderId';
       logger.d("Fetching PDF URL from: $pdfMetadataApiUrl");
 
       final dir = await getTemporaryDirectory();

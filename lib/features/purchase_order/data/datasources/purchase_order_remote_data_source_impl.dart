@@ -10,11 +10,11 @@ class PurchaseOrderRemoteDataSourceImpl implements PurchaseOrderRemoteDataSource
   final Dio dio;
 
   final String _getPurchaseOrdersUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/purchase-order/page';
+      'http://192.168.0.158:48080/admin-api/erp/purchase-order/page';
   final String _getPurchaseOrderDetailBaseUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/purchase-order/get';
+      'http://192.168.0.158:48080/admin-api/erp/purchase-order/get';
   final String _updatePurchaseOrderStatusBaseUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/purchase-order/update-status';
+      'http://192.168.0.158:48080/admin-api/erp/purchase-order/update-status';
 
   PurchaseOrderRemoteDataSourceImpl(this.dio);
 

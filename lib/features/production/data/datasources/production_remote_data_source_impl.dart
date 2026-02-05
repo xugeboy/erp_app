@@ -15,17 +15,17 @@ class ProductionRemoteDataSourceImpl implements ProductionRemoteDataSource {
   final Dio dio;
 
   final String _getProductionsUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/production/page';
+      'http://192.168.0.158:48080/admin-api/erp/production/page';
   final String _getProductionDetailBaseUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/production/get';
+      'http://192.168.0.158:48080/admin-api/erp/production/get';
   final String _updateProductionStatusBaseUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/production/update-status';
+      'http://192.168.0.158:48080/admin-api/erp/production/update-status';
   final String _uploadImageUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/production/update-shipment-pics';
+      'http://192.168.0.158:48080/admin-api/erp/production/update-shipment-pics';
   final String _getShipmentImagesZipUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/production/get-shipment-pics';
+      'http://192.168.0.158:48080/admin-api/erp/production/get-shipment-pics';
   final String _getRelatedPurchaseOrdersBaseUrl =
-      'https://erp.xiangleratchetstrap.com/admin-api/erp/production/contracts-page';
+      'http://192.168.0.158:48080/admin-api/erp/production/contracts-page';
 
   ProductionRemoteDataSourceImpl(this.dio);
 

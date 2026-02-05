@@ -69,7 +69,7 @@ class _PurchaseOrderApprovalPageState
   // This method remains largely the same, fetching PDF based on order.id
   Future<void> _fetchContractUrlAndDisplayPdf(PurchaseOrderEntity order) async {
     final String pdfMetadataApiUrl =
-        'https://erp.xiangleratchetstrap.com/admin-api/erp/purchase-order/export-contract-pdf-app?id=${order.id}';
+        'http://192.168.0.158:48080/admin-api/erp/purchase-order/export-contract-pdf-app?id=${order.id}';
 
     logger.d("ApprovalPage: Fetching PDF URL from metadata API: $pdfMetadataApiUrl for order ${order.no}");
 
