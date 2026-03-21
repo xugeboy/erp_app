@@ -13,5 +13,8 @@ abstract class PurchaseOrderRemoteDataSource {
   Future<PurchaseOrderModel> getPurchaseOrderDetail(int orderId);
 
   Future<void> updatePurchaseOrderStatus(
-      int orderId, int newStatus);
+    int orderId,
+    int newStatus, {
+    bool useAuditEndpoint = false,
+  });
 }

@@ -11,5 +11,9 @@ abstract class PurchaseOrderRepository {
 
   Future<PurchaseOrderEntity> getPurchaseOrderDetail(int orderId);
 
-  Future<void> updatePurchaseOrderStatus(int orderId, int newStatus);
+  Future<void> updatePurchaseOrderStatus(
+    int orderId,
+    int newStatus, {
+    bool useAuditEndpoint = false,
+  });
 }

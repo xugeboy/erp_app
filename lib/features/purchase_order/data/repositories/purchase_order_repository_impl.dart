@@ -9,9 +9,7 @@ import '../datasources/purchase_order_remote_data_source.dart';
 class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {
   final PurchaseOrderRemoteDataSource remoteDataSource;
 
-  PurchaseOrderRepositoryImpl({
-    required this.remoteDataSource,
-  });
+  PurchaseOrderRepositoryImpl({required this.remoteDataSource});
 
   @override
   Future<PaginatedOrdersResult> getPurchaseOrders({
@@ -23,17 +21,30 @@ class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {
     try {
       logger.d('Repository: Calling remoteDataSource.getPurchaseOrders');
       final remoteOrders = await remoteDataSource.getPurchaseOrders(
-          orderNumberQuery: orderNumberQuery, statusFilter: statusFilter,
-          pageNo: pageNo,
-          pageSize: pageSize);
+        orderNumberQuery: orderNumberQuery,
+        statusFilter: statusFilter,
+        pageNo: pageNo,
+        pageSize: pageSize,
+      );
       logger.d(
-          'Repository: Received ${remoteOrders.orders.length} orders from remoteDataSource');
+        'Repository: Received ${remoteOrders.orders.length} orders from remoteDataSource',
+      );
       return remoteOrders;
-    } on DioException catch (e, s) { // Catch DioException and its stackTrace
-      logger.e('Repository: DioException during getPurchaseOrders', error: e, stackTrace: s);
+    } on DioException catch (e, s) {
+      // Catch DioException and its stackTrace
+      logger.e(
+        'Repository: DioException during getPurchaseOrders',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
-    } on Exception catch (e, s) { // Catch generic Exception and its stackTrace
-      logger.e('Repository: Generic Exception during getPurchaseOrders', error: e, stackTrace: s);
+    } on Exception catch (e, s) {
+      // Catch generic Exception and its stackTrace
+      logger.e(
+        'Repository: Generic Exception during getPurchaseOrders',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
@@ -42,36 +53,63 @@ class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {
   Future<PurchaseOrderEntity> getPurchaseOrderDetail(int orderId) async {
     try {
       logger.d(
-          'Repository: Calling remoteDataSource.getPurchaseOrderDetail for ID $orderId');
-      final remoteOrder =
-      await remoteDataSource.getPurchaseOrderDetail(orderId);
+        'Repository: Calling remoteDataSource.getPurchaseOrderDetail for ID $orderId',
+      );
+      final remoteOrder = await remoteDataSource.getPurchaseOrderDetail(
+        orderId,
+      );
       logger.d(
-          'Repository: Received order detail for ${remoteOrder.no} from remoteDataSource');
+        'Repository: Received order detail for ${remoteOrder.no} from remoteDataSource',
+      );
       return remoteOrder;
     } on DioException catch (e, s) {
-      logger.e('Repository: DioException during getPurchaseOrderDetail', error: e, stackTrace: s);
+      logger.e(
+        'Repository: DioException during getPurchaseOrderDetail',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     } on Exception catch (e, s) {
-      logger.e('Repository: Generic Exception during getPurchaseOrderDetail', error: e, stackTrace: s);
+      logger.e(
+        'Repository: Generic Exception during getPurchaseOrderDetail',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
 
   @override
   Future<void> updatePurchaseOrderStatus(
-      int orderId, int newStatus) async {
+    int orderId,
+    int newStatus, {
+    bool useAuditEndpoint = false,
+  }) async {
     try {
       logger.d(
-          'Repository: Calling remoteDataSource.updatePurchaseOrderStatus for ID $orderId to $newStatus');
+        'Repository: Calling remoteDataSource.updatePurchaseOrderStatus for ID $orderId to $newStatus, useAuditEndpoint=$useAuditEndpoint',
+      );
       await remoteDataSource.updatePurchaseOrderStatus(
-          orderId, newStatus);
+        orderId,
+        newStatus,
+        useAuditEndpoint: useAuditEndpoint,
+      );
       logger.d(
-          'Repository: Successfully called updatePurchaseOrderStatus for ID $orderId');
+        'Repository: Successfully called updatePurchaseOrderStatus for ID $orderId',
+      );
     } on DioException catch (e, s) {
-      logger.e('Repository: DioException during updatePurchaseOrderStatus', error: e, stackTrace: s);
+      logger.e(
+        'Repository: DioException during updatePurchaseOrderStatus',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     } on Exception catch (e, s) {
-      logger.e('Repository: Generic Exception during updatePurchaseOrderStatus', error: e, stackTrace: s);
+      logger.e(
+        'Repository: Generic Exception during updatePurchaseOrderStatus',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }

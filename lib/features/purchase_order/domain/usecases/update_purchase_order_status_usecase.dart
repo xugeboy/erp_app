@@ -9,11 +9,16 @@ class UpdatePurchaseOrderStatusUseCase {
 
   Future<void> call({
     required int orderId,
-    required int newStatus
+    required int newStatus,
+    bool useAuditEndpoint = false,
   }) async {
     // Here you might map the "Approved" / "Rejected" string to an integer code
     // if your repository/API expects an integer status.
     // For now, assuming repository handles the string status or it's already mapped.
-    return repository.updatePurchaseOrderStatus(orderId, newStatus);
+    return repository.updatePurchaseOrderStatus(
+      orderId,
+      newStatus,
+      useAuditEndpoint: useAuditEndpoint,
+    );
   }
 }
