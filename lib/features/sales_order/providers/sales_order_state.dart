@@ -2,7 +2,15 @@
 import 'package:equatable/equatable.dart';
 import '../domain/entities/sales_order_entity.dart';
 
-enum ScreenState { initial, loading, loaded, error, submitting, success, loadingMore } // Added loadingMore
+enum ScreenState {
+  initial,
+  loading,
+  loaded,
+  error,
+  submitting,
+  success,
+  loadingMore,
+} // Added loadingMore
 
 class SalesOrderState extends Equatable {
   // List Page State
@@ -33,7 +41,7 @@ class SalesOrderState extends Equatable {
     this.currentOrderNumberQuery = '',
     this.currentStatusFilterCode,
     this.currentPageNo = 1, // Default to page 1
-    this.pageSize = 10,     // Default page size
+    this.pageSize = 10, // Default page size
     this.canLoadMore = true,
     this.detailState = ScreenState.initial,
     this.selectedOrder,
@@ -69,16 +77,17 @@ class SalesOrderState extends Equatable {
       orders: orders ?? this.orders,
       listErrorMessage: listErrorMessage ?? this.listErrorMessage,
       currentOrderNumberQuery:
-      currentOrderNumberQuery ?? this.currentOrderNumberQuery,
-      currentStatusFilterCode: clearStatusFilter
-          ? null
-          : currentStatusFilterCode ?? this.currentStatusFilterCode,
+          currentOrderNumberQuery ?? this.currentOrderNumberQuery,
+      currentStatusFilterCode:
+          clearStatusFilter
+              ? null
+              : currentStatusFilterCode ?? this.currentStatusFilterCode,
       currentPageNo: currentPageNo ?? this.currentPageNo,
       pageSize: pageSize ?? this.pageSize,
       canLoadMore: canLoadMore ?? this.canLoadMore,
       detailState: detailState ?? this.detailState,
       selectedOrder:
-      clearSelectedOrder ? null : selectedOrder ?? this.selectedOrder,
+          clearSelectedOrder ? null : selectedOrder ?? this.selectedOrder,
       detailErrorMessage: detailErrorMessage ?? this.detailErrorMessage,
       approvalState: approvalState ?? this.approvalState,
       approvalMessage: approvalMessage ?? this.approvalMessage,

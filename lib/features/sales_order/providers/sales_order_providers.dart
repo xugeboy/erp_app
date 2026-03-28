@@ -19,7 +19,7 @@ import '../presentation/notifiers/sales_order_notifier.dart';
 // If you have a global Dio provider, use that instead.
 
 final salesOrderRemoteDataSourceProvider = Provider<SalesOrderRemoteDataSource>(
-      (ref) => SalesOrderRemoteDataSourceImpl(ref.read(dioProvider)),
+  (ref) => SalesOrderRemoteDataSourceImpl(ref.read(dioProvider)),
 );
 
 final salesOrderRepositoryProvider = Provider<SalesOrderRepository>((ref) {
@@ -34,26 +34,31 @@ final getSalesOrdersUseCaseProvider = Provider<GetSalesOrdersUseCase>((ref) {
   return GetSalesOrdersUseCase(ref.read(salesOrderRepositoryProvider));
 });
 
-final getSalesOrderDetailUseCaseProvider =
-Provider<GetSalesOrderDetailUseCase>((ref) {
-  return GetSalesOrderDetailUseCase(ref.read(salesOrderRepositoryProvider));
-});
+final getSalesOrderDetailUseCaseProvider = Provider<GetSalesOrderDetailUseCase>(
+  (ref) {
+    return GetSalesOrderDetailUseCase(ref.read(salesOrderRepositoryProvider));
+  },
+);
 
 final updateSalesOrderStatusUseCaseProvider =
-Provider<UpdateSalesOrderStatusUseCase>((ref) {
-  return UpdateSalesOrderStatusUseCase(
-      ref.read(salesOrderRepositoryProvider));
-});
+    Provider<UpdateSalesOrderStatusUseCase>((ref) {
+      return UpdateSalesOrderStatusUseCase(
+        ref.read(salesOrderRepositoryProvider),
+      );
+    });
 
 final salesOrderStatusFilterProvider = StateProvider<int?>((ref) => 0);
 
 // --- Presentation Layer (Notifier) Provider ---
 final salesOrderNotifierProvider =
-StateNotifierProvider<SalesOrderNotifier, SalesOrderState>((ref) {
-  return SalesOrderNotifier(
-    getSalesOrdersUseCase: ref.read(getSalesOrdersUseCaseProvider),
-    getSalesOrderDetailUseCase: ref.read(getSalesOrderDetailUseCaseProvider),
-    updateSalesOrderStatusUseCase:
-    ref.read(updateSalesOrderStatusUseCaseProvider),
-  );
-});
+    StateNotifierProvider<SalesOrderNotifier, SalesOrderState>((ref) {
+      return SalesOrderNotifier(
+        getSalesOrdersUseCase: ref.read(getSalesOrdersUseCaseProvider),
+        getSalesOrderDetailUseCase: ref.read(
+          getSalesOrderDetailUseCaseProvider,
+        ),
+        updateSalesOrderStatusUseCase: ref.read(
+          updateSalesOrderStatusUseCaseProvider,
+        ),
+      );
+    });
