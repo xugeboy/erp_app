@@ -159,6 +159,7 @@ class PurchaseOrderNotifier extends StateNotifier<PurchaseOrderState> {
       detailState: ScreenState.loading,
       clearSelectedOrder: true,
       detailErrorMessage: '',
+      currentStatusFilterCode: state.currentStatusFilterCode,
     );
     logger.d("Notifier: Fetching detail for order ID $orderId");
     try {
@@ -167,6 +168,7 @@ class PurchaseOrderNotifier extends StateNotifier<PurchaseOrderState> {
         detailState: ScreenState.loaded,
         selectedOrder: orderData,
         detailErrorMessage: '',
+        currentStatusFilterCode: state.currentStatusFilterCode,
       );
     } on DioException catch (e, s) {
       logger.e(

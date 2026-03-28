@@ -18,11 +18,14 @@ import '../presentation/notifiers/purchase_order_notifier.dart';
 // Provider for Dio instance (if you don't have a global one already)
 // If you have a global Dio provider, use that instead.
 
-final purchaseOrderRemoteDataSourceProvider = Provider<PurchaseOrderRemoteDataSource>(
+final purchaseOrderRemoteDataSourceProvider =
+    Provider<PurchaseOrderRemoteDataSource>(
       (ref) => PurchaseOrderRemoteDataSourceImpl(ref.read(dioProvider)),
-);
+    );
 
-final purchaseOrderRepositoryProvider = Provider<PurchaseOrderRepository>((ref) {
+final purchaseOrderRepositoryProvider = Provider<PurchaseOrderRepository>((
+  ref,
+) {
   return PurchaseOrderRepositoryImpl(
     remoteDataSource: ref.read(purchaseOrderRemoteDataSourceProvider),
     // networkInfo: ref.watch(networkInfoProvider), // Removed as per your setup
@@ -30,28 +33,38 @@ final purchaseOrderRepositoryProvider = Provider<PurchaseOrderRepository>((ref) 
 });
 
 // --- Domain Layer (Use Case) Providers ---
-final getPurchaseOrdersUseCaseProvider = Provider<GetPurchaseOrdersUseCase>((ref) {
+final getPurchaseOrdersUseCaseProvider = Provider<GetPurchaseOrdersUseCase>((
+  ref,
+) {
   return GetPurchaseOrdersUseCase(ref.read(purchaseOrderRepositoryProvider));
 });
 
 final getPurchaseOrderDetailUseCaseProvider =
-Provider<GetPurchaseOrderDetailUseCase>((ref) {
-  return GetPurchaseOrderDetailUseCase(ref.read(purchaseOrderRepositoryProvider));
-});
+    Provider<GetPurchaseOrderDetailUseCase>((ref) {
+      return GetPurchaseOrderDetailUseCase(
+        ref.read(purchaseOrderRepositoryProvider),
+      );
+    });
 
 final updatePurchaseOrderStatusUseCaseProvider =
-Provider<UpdatePurchaseOrderStatusUseCase>((ref) {
-  return UpdatePurchaseOrderStatusUseCase(
-      ref.read(purchaseOrderRepositoryProvider));
-});
+    Provider<UpdatePurchaseOrderStatusUseCase>((ref) {
+      return UpdatePurchaseOrderStatusUseCase(
+        ref.read(purchaseOrderRepositoryProvider),
+      );
+    });
+
+final purchaseOrderStatusFilterProvider = StateProvider<int?>((ref) => 20);
 
 // --- Presentation Layer (Notifier) Provider ---
 final purchaseOrderNotifierProvider =
-StateNotifierProvider<PurchaseOrderNotifier, PurchaseOrderState>((ref) {
-  return PurchaseOrderNotifier(
-    getPurchaseOrdersUseCase: ref.read(getPurchaseOrdersUseCaseProvider),
-    getPurchaseOrderDetailUseCase: ref.read(getPurchaseOrderDetailUseCaseProvider),
-    updatePurchaseOrderStatusUseCase:
-    ref.read(updatePurchaseOrderStatusUseCaseProvider),
-  );
-});
+    StateNotifierProvider<PurchaseOrderNotifier, PurchaseOrderState>((ref) {
+      return PurchaseOrderNotifier(
+        getPurchaseOrdersUseCase: ref.read(getPurchaseOrdersUseCaseProvider),
+        getPurchaseOrderDetailUseCase: ref.read(
+          getPurchaseOrderDetailUseCaseProvider,
+        ),
+        updatePurchaseOrderStatusUseCase: ref.read(
+          updatePurchaseOrderStatusUseCaseProvider,
+        ),
+      );
+    });

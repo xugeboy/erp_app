@@ -72,7 +72,7 @@ class SalesOrderState extends Equatable {
       currentOrderNumberQuery ?? this.currentOrderNumberQuery,
       currentStatusFilterCode: clearStatusFilter
           ? null
-          : currentStatusFilterCode,
+          : currentStatusFilterCode ?? this.currentStatusFilterCode,
       currentPageNo: currentPageNo ?? this.currentPageNo,
       pageSize: pageSize ?? this.pageSize,
       canLoadMore: canLoadMore ?? this.canLoadMore,

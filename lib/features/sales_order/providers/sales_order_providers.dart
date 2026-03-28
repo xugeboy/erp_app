@@ -45,6 +45,8 @@ Provider<UpdateSalesOrderStatusUseCase>((ref) {
       ref.read(salesOrderRepositoryProvider));
 });
 
+final salesOrderStatusFilterProvider = StateProvider<int?>((ref) => 0);
+
 // --- Presentation Layer (Notifier) Provider ---
 final salesOrderNotifierProvider =
 StateNotifierProvider<SalesOrderNotifier, SalesOrderState>((ref) {
